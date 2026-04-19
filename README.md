@@ -27,6 +27,13 @@ With the microphone input established, this update closes the feedback loop by i
 - **Gapless Sequential Audio Scheduling (`playAudioChunk`)**: To eliminate the stutter and clicks that occur when audio buffers are played one-by-one, `AudioBufferSourceNode` chunks are scheduled using a monotonically advancing `nextStartTime` clock. Each new chunk is queued to start exactly when the previous one ends (`nextStartTime += audioBuffer.duration`), producing perfectly seamless streaming playback regardless of network jitter.
 - **Active Source Tracking**: Each playing `AudioBufferSourceNode` is tracked in a `Set<AudioBufferSourceNode>`. Nodes auto-remove themselves on the `"ended"` event, keeping a live reference pool for future disconnect/interrupt control.
 
+### ⚡ Audio Interrupt Handling & Playback Resilience (`LiveManager.ts`)
+This update hardens the playback pipeline against real-world edge cases — interruptions, late starts, and stale clock states:
+
+- **Server Interrupt Detection**: `handleMessage` now inspects `serverContent.interrupted`. When Gemini signals a barge-in (the user speaks over the assistant), `stopAllAudio()` is called immediately to flush all queued audio and halt playback before the stale response finishes playing.
+- **`stopAllAudio()` — Full Playback Teardown**: Iterates the active `Set<AudioBufferSourceNode>`, calling `.stop()` on each node inside a `try/catch` to silently handle already-finished sources. The Set is then cleared and `nextStartTime` is reset to `outputAudioContext.currentTime`, leaving the scheduler in a clean state ready for the next response.
+- **Clock Drift Guard in `playAudioChunk`**: If the accumulated `nextStartTime` ever falls behind the `AudioContext`'s live `currentTime` (e.g. after a long pause, an interruption, or tab throttling), it is reset to `currentTime` before scheduling the next chunk. This prevents audio from being scheduled in the past, which would cause the Web Audio API to immediately fire it (causing double-plays or desync artifacts).
+
 ## Setup & Development
 
 ### Important Environment Setup

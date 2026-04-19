@@ -15,6 +15,7 @@ type AudioStore = {
   isMuted: boolean;
   liveManagerInstance: LiveManager;
   transcript: TranscriptItem[];
+  volume: number;
 
   selectedLanguage: string;
   selectedProficiencyLevel: string;
@@ -38,6 +39,7 @@ export const useAudioStore = create<AudioStore>()(
     error: null,
     isMuted: false,
     transcript: [],
+    volume: 0,
 
     selectedLanguage: AVAILABLE_LANGUAGES[0].code,
     selectedProficiencyLevel: AVAILABLE_PROFICIENCY_LEVELS[0].label,
@@ -133,7 +135,11 @@ export const useAudioStore = create<AudioStore>()(
               });
             },
             // implement this, animate when AI is talking.
-            onAudioLevel: () => {},
+            onAudioLevel: (level, type) => {
+              if (type === 'output') {
+                set({ volume: level });
+              }
+            },
           },
           token.name,
         );

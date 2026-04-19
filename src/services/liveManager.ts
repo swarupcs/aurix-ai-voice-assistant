@@ -26,7 +26,9 @@ export class LiveManager {
   private sources = new Set<AudioBufferSourceNode>();
   private callbacks: LiveManagerCallbacks;
   // todo: explore where to use: hint - in session connect
-  private isMuted: boolean;
+  private isMuted: boolean = false;
+  private audioLevelInterval: NodeJS.Timeout | null = null;
+  private outputAnalyser: AnalyserNode | null = null;
 
   private inputTranscription = '';
   private outputTranscription = '';
@@ -35,6 +37,7 @@ export class LiveManager {
     this.ai = new GoogleGenAI({
       apiKey: token,
       apiVersion: 'v1alpha',
+      vertexai: false,
     });
 
     this.callbacks = callbacks;
@@ -96,8 +99,26 @@ export class LiveManager {
       }
 
       this.outputNode = this.outputAudioContext.createGain();
+      this.outputAnalyser = this.outputAudioContext.createAnalyser();
+      this.outputAnalyser.fftSize = 256;
 
-      this.outputNode.connect(this.outputAudioContext.destination);
+      this.outputNode.connect(this.outputAnalyser);
+      this.outputAnalyser.connect(this.outputAudioContext.destination);
+
+      this.audioLevelInterval = setInterval(() => {
+        if (!this.outputAnalyser) return;
+        const dataArray = new Uint8Array(this.outputAnalyser.frequencyBinCount);
+        this.outputAnalyser.getByteFrequencyData(dataArray);
+        let sum = 0;
+        for (let i = 0; i < dataArray.length; i++) {
+          sum += dataArray[i];
+        }
+        const avg = sum / dataArray.length;
+        const normalized = Math.min(1, avg / 255);
+        if (this.callbacks.onAudioLevel) {
+          this.callbacks.onAudioLevel(normalized, 'output');
+        }
+      }, 50);
 
       await this.inputAudioContext.audioWorklet.addModule(
         '/worklets/mic-processor.js',
@@ -140,7 +161,7 @@ export class LiveManager {
 
   generateSystemPrompt(config: ConnectConfig) {
     return `
-    ROLE: You are an expert language tutor, Your name is "TalkGyan".
+    ROLE: You are an expert language tutor, Your name is "Aurix".
 
     GOAL: Help the user improve their proficiency in ${config.selected_launguage_name} (${config.selected_launguage_region}).
     TOPIC: ${config.selected_topic}.
@@ -216,8 +237,7 @@ export class LiveManager {
 
     source.buffer = audioBuffer;
 
-    // source.connect(this.outputNode);
-    source.connect(this.outputAudioContext.destination);
+    source.connect(this.outputNode);
 
     source.start(this.nextStartTime);
 
@@ -256,6 +276,11 @@ export class LiveManager {
 
   disconnect() {
     this.stopAllAudio();
+
+    if (this.audioLevelInterval) {
+      clearInterval(this.audioLevelInterval);
+      this.audioLevelInterval = null;
+    }
 
     if (this.activeSession) {
       this.activeSession.close();

@@ -7,28 +7,32 @@ A detailed breakdown of every technical decision and implementation made in the 
 ## 1. 🛠 Project Setup & Bug Fixes
 
 ### Next.js 16 / Turbopack Compatibility
+
 - **Problem**: The previous `BASE_URL = ''` caused `new URL('')` to throw a `TypeError: Invalid URL` at module evaluation time, crashing the entire Next.js SSR server with 500 errors.
 - **Fix**: Changed `metadataBase` in `layout.tsx` to `BASE_URL ? new URL(BASE_URL) : undefined` — safely omitting `metadataBase` when no production URL is set, which causes Next.js to default to `http://localhost:3000` in dev.
 
 ### Hydration Mismatch Fix (`navbar.tsx`)
+
 - **Problem**: `Navbar` was a Server Component but used Radix UI's `<SheetTrigger asChild>` which clones its child and attaches event listeners. This is illegal in RSC — the browser received a different DOM tree than what the server rendered, causing a full React hydration crash.
 - **Fix**: Added `'use client'` directive to `navbar.tsx`, making it a Client Component so Radix can correctly attach `onClick`, `aria-*`, and `data-state` props without conflict.
 
 ### Syntax Errors Fixed
+
 - Fixed an **unterminated string literal** on the `alt` prop of the logo `<Image>` — `alt='Aurix` was missing the closing quote, causing the entire file to fail parsing.
 - Added a missing `sizes` prop to the logo `<Image fill />` to resolve the Next.js performance warning about missing responsive size hints for LCP images.
 
 ### Branding Update
-- Renamed all UI text from "TalkGyan AI" to "Aurix" (and standardizing component nomenclature) across `navbar.tsx`, `right-sidebar.tsx`, `layout.tsx`, and metadata fields.
+
+- Renamed all UI text from "Aurix AI" to "Aurix" (and standardizing component nomenclature) across `navbar.tsx`, `right-sidebar.tsx`, `layout.tsx`, and metadata fields.
 
 ---
 
 ## 2. 📦 Dependencies Added
 
-| Package | Version | Purpose |
-|---|---|---|
-| `@google/genai` | `^1.50.1` | Google Gemini Live API SDK |
-| `zustand` | `^5.0.12` | Global audio state management |
+| Package         | Version   | Purpose                       |
+| --------------- | --------- | ----------------------------- |
+| `@google/genai` | `^1.50.1` | Google Gemini Live API SDK    |
+| `zustand`       | `^5.0.12` | Global audio state management |
 
 ---
 
@@ -37,6 +41,7 @@ A detailed breakdown of every technical decision and implementation made in the 
 `LiveManager` is a TypeScript class that owns the entire lifecycle of a Gemini Live WebSocket session. It is designed as a **singleton** — one instance per session, held in the Zustand store.
 
 ### Class Fields
+
 ```typescript
 private ai: GoogleGenAI               // API client
 private activeSession: Session | null  // live WebSocket session
@@ -55,10 +60,12 @@ private outputTranscription = '';     // buffer for partial ai text
 ```
 
 ### Constructor
+
 - Accepts a `LiveManagerCallbacks` typed object, storing it for use during session events.
 - Instantiates `GoogleGenAI` with the `NEXT_PUBLIC_GEMINI_API_KEY` env variable.
 
 ### `startSession()` — Full Session Lifecycle
+
 Wrapped in a `try/catch` for full error resilience. Steps:
 
 1. Fires `callbacks.onStateChange(ConnectionState.CONNECTING)`.
@@ -73,12 +80,14 @@ Wrapped in a `try/catch` for full error resilience. Steps:
 7. Opens `getUserMedia()` with hardware-level constraints: `sampleRate: 16000`, `channelCount: 1`, `echoCancellation: true`, `noiseSuppression: true`, `autoGainControl: true`.
 
 ### `handleMessage(message: LiveServerMessage)`
+
 - Checks `serverContent.interrupted` — if `true`, calls `stopAllAudio()` (barge-in support).
 - Detects `inputTranscription.text` / `outputTranscription.text` packets and streams them up via `callbacks.onTranscript`.
 - Recognizes `turnComplete`, emitting a final packet to seal text bubbles.
 - Extracts `inlineData.data` Base64 PCM audio string and hits `playAudioChunk(base64Data)`.
 
 ### `playAudioChunk(audioData: string)`
+
 1. Base64 → `Uint8Array` → `decodeAudioData()` at `24000 Hz`.
 2. **Clock drift guard**: if `nextStartTime < outputAudioContext.currentTime`, snaps `nextStartTime` to `currentTime` to prevent past-scheduling artifacts.
 3. Spawns an `AudioBufferSourceNode`, schedules it using `.start(nextStartTime)`.
@@ -86,10 +95,12 @@ Wrapped in a `try/catch` for full error resilience. Steps:
 5. Adds source to `this.sources` Set; auto-removes on `"ended"`.
 
 ### `setMute(isMuted: boolean)`
+
 - Calls `mediaStream.getAudioTracks().forEach(track => track.enabled = !isMuted)`.
 - Operating at the **OS/driver level** to block packet collection.
 
 ### `disconnect()`
+
 - Exhaustively terminates the session memory space preventing zombie workers.
 - Fires `stopAllAudio()`.
 - Closes the WebSocket `.activeSession()`.
@@ -105,7 +116,7 @@ A minimal `AudioWorkletProcessor` subclass registered as `mic-processor` that co
 
 ## 5. 🔧 Audio Utilities (`src/lib/audioUtils.ts`)
 
-- **`createPCMBlob`**: Scales user input bounds up to `[-32768, 32767]` Int16 arrays and b64 encodes them. 
+- **`createPCMBlob`**: Scales user input bounds up to `[-32768, 32767]` Int16 arrays and b64 encodes them.
 - **`decodeAudioData`**: Performs fraction math `/ 32768.0` converting Gemini bytes descending back to traditional `Float32Array` values recognized by the browser node maps.
 
 ---
@@ -115,26 +126,30 @@ A minimal `AudioWorkletProcessor` subclass registered as `mic-processor` that co
 Built with **Zustand** + `devtools` middleware.
 
 ### Store Shape
+
 ```typescript
 type AudioStore = {
-  conectionState: ConnectionState;   
-  error: string | null;              
-  isMuted: boolean;                  
-  transcript: TranscriptItem[];      
-  liveManagerInstance: LiveManager;  
-  connect: () => Promise<void>;     
-  disconnect: () => Promise<void>;   
-  toggleMute: () => void;            
-}
+  conectionState: ConnectionState;
+  error: string | null;
+  isMuted: boolean;
+  transcript: TranscriptItem[];
+  liveManagerInstance: LiveManager;
+  connect: () => Promise<void>;
+  disconnect: () => Promise<void>;
+  toggleMute: () => void;
+};
 ```
 
 ### Transcript Handling Logic
+
 When the store fires `onTranscript(sender, text, isPartial)`, it performs a deep smart scan manipulating `state.transcript`:
+
 - `findLastIndex` locates open trailing objects where `isPartial === true`.
 - Native object property manipulation streams text without DOM breaking.
-- Automatically seals chunks locking `.isPartial = false` resolving cleanly. 
+- Automatically seals chunks locking `.isPartial = false` resolving cleanly.
 
 ### Teardown / Disconnect Lifecycle
+
 - `disconnect()` overrides store parameters while assigning `state.liveManagerInstance = undefined` initiating garbage collection routines immediately.
 
 ---
@@ -142,23 +157,28 @@ When the store fires `onTranscript(sender, text, isPartial)`, it performs a deep
 ## 7. 🖥 UI Components
 
 ### `ControlsPanel` (`src/components/controls-panel.tsx`)
+
 - Reads live reactive states.
 - Connect button mounts only when disconnected.
 - Red "End Chat" securely dispatches global system teardown `.disconnect()`.
 - Mute binds OS hardware `toggleMute()`.
 
 ### `RightSidebar` (`src/components/right-sidebar.tsx`)
+
 - Connected to `useAudioStore().transcript`. Iterates through dynamic arrays generating active text bubbles formatted securely for internal models vs users.
 
 ### `StatusPanel` (`src/components/status-panel.tsx`)
+
 - Reads {conectionState} to drive badge layouts (Amber, Blue Pulsing, Emerald).
 
 ### `MicSelector` (`src/components/ui/mic-selector.tsx`)
+
 - Fetches navigator devices directly bypassing constraints inside `loadDevicesWithoutPermission`.
 - Renders dual interface previews utilizing a native visualizer (`<LiveWaveform>`).
 
 ### `VisualizationPanel` (`src/components/visualization-panel.tsx`)
-- ⚠️ Target point for next implementation logic. 
+
+- ⚠️ Target point for next implementation logic.
 
 ---
 
@@ -196,10 +216,10 @@ AudioWorkletNode (mic-processor.js) ── Audio Thread, 125×/sec, 8ms frames
     ▼
 Main Thread: handleMessage() → createPCMBlob()
     │
-    ▼ 
+    ▼
 Gemini WebSocket ───►  Transcriptions (RightSidebar DOM)
     │                  Audio Chunks
-    ▼                  
+    ▼
 playAudioChunk() → base64ToUint8Array() → decodeAudioData()
     │
     ▼
@@ -213,8 +233,8 @@ Speaker
 
 ## 9. 🔮 Upcoming / Remaining TODO Checklist
 
-| Area | Component | Notes |
-|---|---|---|
-| Level Dynamics | `VisualizationPanel` | Extract active `onAudioLevel` payload variables adjusting orbit geometry. |
-| Selected Devices | `LiveManager` | Intercept hardware IDs connecting `enumerateDevices()` to local instantiations. |
-| Audio Volumes | `store/useAudioStore` | Expand types accepting generic payload variables parsing `AudioVolume` types. |
+| Area             | Component             | Notes                                                                           |
+| ---------------- | --------------------- | ------------------------------------------------------------------------------- |
+| Level Dynamics   | `VisualizationPanel`  | Extract active `onAudioLevel` payload variables adjusting orbit geometry.       |
+| Selected Devices | `LiveManager`         | Intercept hardware IDs connecting `enumerateDevices()` to local instantiations. |
+| Audio Volumes    | `store/useAudioStore` | Expand types accepting generic payload variables parsing `AudioVolume` types.   |

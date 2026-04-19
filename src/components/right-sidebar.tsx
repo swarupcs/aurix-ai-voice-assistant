@@ -25,7 +25,7 @@ function RightSidebar() {
   //     sender: "user",
   //   },
   //   {
-  //     text: "I'm TalkGyan AI Assistant",
+  //     text: "I'm Aurix AI Assistant",
   //     isPartial: false,
   //     sender: "assistant",
   //   },
@@ -72,9 +72,7 @@ function RightSidebar() {
                       )}
                     </MessageContent>
 
-                    {!isUser && (
-                      <MessageAvatar src='/logo.png' name='TalkGyan' />
-                    )}
+                    {!isUser && <MessageAvatar src='/logo.png' name='Aurix' />}
                   </Message>
                 );
               })

@@ -3,19 +3,22 @@
 import Image from 'next/image';
 import { Orb } from '@/components/ui/orb';
 import { LiveWaveform } from './ui/live-waveform';
+import { useAudioStore } from '@/store/useAudioStore';
+import { ConnectionState } from '@/types';
 
 function VisualizationPanel() {
-  const isConnected = true;
-  const isConnecting = false;
-  // todo: make this dynamic
-  const agentState = 'talking';
+  const { conectionState, volume } = useAudioStore();
+  
+  const isConnected = conectionState === ConnectionState.CONNECTED;
+  const isConnecting = conectionState === ConnectionState.CONNECTING;
+  
+  const agentState = volume > 0.01 ? 'talking' : 'listening';
 
   // Logic to pulsate the logo based on output volume
   // Base scale is 1. We add a fraction of the audio level.
   // We clamp the level to avoid massive explosions of the logo if audio peaks.
 
-  // todo: make this dynamic
-  const activeScale = 1;
+  const activeScale = 1 + (volume || 0) * 0.5;
   const logoScale = isConnected && agentState === 'talking' ? activeScale : 1;
 
   return (

@@ -1,10 +1,17 @@
 import { AuthToken, GoogleGenAI } from "@google/genai";
 
-const geminiClient = new GoogleGenAI({
-  apiKey: process.env.GEMINI_API_KEY,
-});
-
 export async function GET() {
+  const apiKey = process.env.GEMINI_API_KEY || process.env.NEXT_PUBLIC_GEMINI_API_KEY;
+  if (!apiKey) {
+    console.error("Missing Gemini API key");
+    return Response.json({ error: "Missing API Key" }, { status: 500 });
+  }
+
+  const geminiClient = new GoogleGenAI({
+    apiKey,
+    vertexai: false,
+  });
+
   const expireTime = new Date(
     Date.now() + 30 * 60 * 1000,
   ).toISOString();

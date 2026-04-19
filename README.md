@@ -1,36 +1,37 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Aurix AI Voice Assistant
 
-## Getting Started
+Aurix is a real-time, interactive, browser-based AI voice assistant designed to help learn languages by speaking. Built on the modern Next.js 14+ App Router, it provides a fluid user experience featuring dynamic visualizations and responsive UI elements. 
 
-First, run the development server:
+## Recent Implementation Updates
 
+The latest updates established the core conversational backend and audio piping functionality:
+
+- **Google Gemini Live API Integration (`@google/genai`)**: Constructed a new singleton `LiveManager` to handle real-time WebSockets with the `gemini-2.5-flash-native-audio-preview-09-2025` model for instantaneous raw-audio in & out interactions.
+- **Zustand State Management (`useAudioStore`)**: Created an audio store to track and manage connection states (Connected, Linking, Disconnected), device permission errors, and the active `LiveManager` session securely across the application.
+- **Microphone Hardware Permissions Handling (`MicSelector`)**: Rebuilt the `useAudioDevices` hook to seamlessly handle browser constraints when enumerating `audioinput` devices, ensuring robust request flows before and after microphone permissions are granted.
+- **Wired UI Interactive Points**: The core user interface, specifically `controls-panel.tsx`, is now wired up to orchestrate `connect()` sessions. The `visualization-panel.tsx` features an immersive pulsing orb and waveform response setup mapped dynamically to AI dialogue interactions.
+
+## Setup & Development
+
+### Important Environment Setup
+You need an active Google Generative AI API Project key with access to the multimodal audio API models.
+
+1. Create a `.env` in the root of the project:
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+NEXT_PUBLIC_GEMINI_API_KEY="your-gemini-api-key"
+```
+*(Ensure you secure your exposed tokens when moving to a production environment).*
+
+### Quick Start
+
+1. Install all dependencies using `pnpm`:
+```bash
+pnpm install
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+2. Run the development server locally:
+```bash
+pnpm run dev
+```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+3. Open [http://localhost:3000](http://localhost:3000) in your web browser. Click the microphone button and "Connect" to instantly start your live audio session with the Aurix assistant!

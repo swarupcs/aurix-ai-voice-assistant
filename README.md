@@ -13,7 +13,9 @@ The latest updates established the core conversational backend and audio piping 
 To process low-latency, raw voice input suitable for the Gemini Live API, we bypass legacy browser constraints by utilizing native hardware protocols:
 - **Hardware Profile Optimizations**: Configures active filtering via `navigator.mediaDevices`, forcing hardware-level `echoCancellation`, `noiseSuppression`, and `autoGainControl` settings to maximize vocal clarity en-route to the AI.
 - **Independent AudioContexts**: Instantiates dedicated input (`16000 Hz`) and output (`24000 Hz`) contexts perfectly tailored to the model's expected sample rates without artifact upsampling.
-- **AudioWorkletNode Architecture**: Replaced standard processor nodes in favor of a high-performance `AudioWorkletNode` (`mic-processor.js`). This enables non-blocking, multi-threaded extraction of raw PCM audio chunks running independently on the Audio Thread to securely pipe bytes into the Gemini Socket.
+- **AudioWorkletNode Architecture**: Replaced standard processor nodes in favor of a high-performance `AudioWorkletNode` (`mic-processor.js`). This enables non-blocking, multi-threaded extraction of raw PCM audio chunks running independently on the Audio Thread.
+- **Real-time PCM Bit-Depth Conversion (`audioUtils.ts`)**: Implements on-the-fly mathematical conversion bridging browser audio (`Float32Array` mapped `[-1.0, 1.0]`) into Gemini-required deep audio (`Int16Array` mapped `[-32768, 32767]`), clamping outliers to eliminate clipping. 
+- **Active Base64 WebSocket Piping**: Utilizing the `@google/genai` Live API method `sendRealtimeInput({ audio: pcmBlob })`, encoded `Int16` sound chunks are fed at ultra-low latencies directly down the secure socket without chunk buffering delays.
 - **Wired UI Interactive Points**: The core user interface, specifically `controls-panel.tsx`, is now wired up to orchestrate `connect()` sessions. The `visualization-panel.tsx` features an immersive pulsing orb and waveform response setup mapped dynamically to AI dialogue interactions.
 
 ## Setup & Development

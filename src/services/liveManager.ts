@@ -1,3 +1,4 @@
+import { createPCMBlob } from '@/lib/audioUtils';
 import { INPUT_SAMPLE_RATE, MODEL, OUTPUT_SAMPLE_RATE } from '@/lib/constants';
 import { GoogleGenAI, Modality, Session } from '@google/genai';
 
@@ -67,7 +68,11 @@ export class LiveManager {
     );
 
     this.workletNode.port.onmessage = (event) => {
-      console.log('RECEIVED MESSAGE FROM AUDIO THREAD', event.data);
+      const pcmBlob = createPCMBlob(event.data as Float32Array);
+
+      this.activeSession?.sendRealtimeInput({
+        audio: pcmBlob,
+      });
     };
 
     this.mediaStream = await navigator.mediaDevices.getUserMedia({

@@ -17,15 +17,14 @@ export interface AudioVolume {
   output: number;
 }
 
-
 export interface LiveManagerCallbacks {
   onStateChange: (state: ConnectionState) => void;
   onTranscript: (
-    sender: "user" | "model",
+    sender: 'user' | 'model',
     text: string,
-    isPartial: boolean
+    isPartial: boolean,
   ) => void;
-  onAudioLevel: (level: number, type: "input" | "output") => void;
+  onAudioLevel: (level: number, type: 'input' | 'output') => void;
   onError: (error: string) => void;
 }
 
@@ -37,7 +36,6 @@ export interface ConnectConfig {
   selected_launguage_code: string;
   selected_launguage_region: string;
 
-  context: string;
   selected_proefficent_level: string;
   selected_assistant_voice: string;
 }

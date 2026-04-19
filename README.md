@@ -75,6 +75,13 @@ To ensure smooth browser memory management and prevent zombie microphone threads
 - **Zustand Reference Flushing**: In `useAudioStore`, the `disconnect()` action forces standard state resets but critically overwrites the `liveManagerInstance` reference back to `undefined`. This destroys the object graph entirely, allowing the JS Garbage Collector to sweep the entire session off the heap.
 - **Red "End Connect" Interface**: Wired the destructive `.disconnect()` function natively into the `ControlsPanel` End button.
 
+### ⚙️ Dynamic AI Persona & Configuration Pipeline (`LiveManager` → `useAudioStore` → `LeftSidebar`)
+This update connects the User Interface configuration options natively into the AI's generation prompt, making the AI react dynamically as a custom language tutor:
+
+- **Zustand UI State Connectors**: State variables (`selectedLanguage`, `selectedProficiencyLevel`, `selectedTopic`, `selectedAssistantVoice`) were added to `useAudioStore`, tracking the Dropdown menus physically attached inside `LeftSidebar`.
+- **System Prompt Generation (`LiveManager`)**: Designed `generateSystemPrompt(config)` to dynamically format a strict instruction set before initiating the WebSocket. It injects the user's selected configurations directly into the prompt (e.g., instructing the AI to "strictly speak in Spanish", "correct mistakes", and "act as a language tutor").
+- **Google Voice Binding (`prebuiltVoiceConfig`)**: Configured the exact `voiceName` chosen by the UI (e.g. `Puck`, `Aoede`, `Charon`) deeply within the `speechConfig` payload connecting to the Gemini WebSocket, instantly assigning the AI's speaking tone and pitch.
+
 ## Setup & Development
 
 ### Important Environment Setup

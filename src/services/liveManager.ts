@@ -4,9 +4,10 @@ import {
   decodeAudioData,
 } from '@/lib/audioUtils';
 import { INPUT_SAMPLE_RATE, MODEL, OUTPUT_SAMPLE_RATE } from '@/lib/constants';
-import { ConnectionState, LiveManagerCallbacks } from '@/types';
+import { ConnectConfig, ConnectionState, LiveManagerCallbacks } from '@/types';
 import {
   GoogleGenAI,
+  LiveConnectConfig,
   LiveServerMessage,
   Modality,
   Session,
@@ -38,16 +39,23 @@ export class LiveManager {
     this.callbacks = callbacks;
   }
 
-  async startSession() {
+  async startSession(connectConfig: ConnectConfig) {
     try {
       console.log('starting the session');
 
       // connecting
       this.callbacks.onStateChange(ConnectionState.CONNECTING);
 
-      const config = {
+      const config: LiveConnectConfig = {
         responseModalities: [Modality.AUDIO],
-        systemInstruction: 'You are a helpful and friendly AI assistant.',
+        speechConfig: {
+          voiceConfig: {
+            prebuiltVoiceConfig: {
+              voiceName: connectConfig.selected_assistant_voice,
+            },
+          },
+        },
+        systemInstruction: this.generateSystemPrompt(connectConfig),
         inputAudioTranscription: {},
         outputAudioTranscription: {},
       };
@@ -125,6 +133,25 @@ export class LiveManager {
       this.callbacks.onStateChange(ConnectionState.ERROR);
       this.callbacks.onError('Something went wrong.');
     }
+  }
+
+  generateSystemPrompt(config: ConnectConfig) {
+    return `
+    ROLE: You are an expert language tutor, Your name is "TalkGyan".
+
+    GOAL: Help the user improve their proficiency in ${config.selected_launguage_name} (${config.selected_launguage_region}).
+    TOPIC: ${config.selected_topic}.
+    USER LEVEL: ${config.selected_proefficent_level}.
+
+    INSTRUCTIONS:
+    1.  **Strictly** speak in ${config.selected_launguage_name}. Only use English if the user is completely stuck or asks for a translation.
+    2.  **Correction Mode**:
+        - If the user makes a grammar or pronunciation mistake, gently correct it *first*, then continue the conversation.
+        - Format: "Small tip: In ${config.selected_launguage_name} we say [Correction]. Anyway, [Response]?"
+    3.  **Conversation Flow**:
+        - Keep responses concise (1-3 sentences).
+        - Ask open-ended questions to keep the user talking.
+    `;
   }
 
   async handleMessage(message: LiveServerMessage) {

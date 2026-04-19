@@ -162,7 +162,17 @@ When the store fires `onTranscript(sender, text, isPartial)`, it performs a deep
 
 ---
 
-## 8. 🗺 Data Flow Diagram
+## 8. ⚙️ Dynamic AI Persona & Configuration Pipeline
+
+This update connects the User Interface configuration options natively into the AI's generation prompt, making the AI react dynamically as a custom language tutor:
+
+- **Zustand UI State Connectors**: State variables (`selectedLanguage`, `selectedProficiencyLevel`, `selectedTopic`, `selectedAssistantVoice`) were added to `useAudioStore`, tracking the Dropdown menus physically attached inside `LeftSidebar`.
+- **System Prompt Generation (`LiveManager`)**: Designed `generateSystemPrompt(config)` to dynamically format a strict instruction set before initiating the WebSocket. It injects the user's selected configurations directly into the prompt (e.g., instructing the AI to "strictly speak in Spanish", "correct mistakes", and "act as a language tutor").
+- **Google Voice Binding (`prebuiltVoiceConfig`)**: Configured the exact `voiceName` chosen by the UI (e.g. `Puck`, `Aoede`, `Charon`) deeply within the `speechConfig` payload connecting to the Gemini WebSocket, instantly assigning the AI's speaking tone and pitch.
+
+---
+
+## 9. 🗺 Data Flow Diagram
 
 ```text
 User speaks

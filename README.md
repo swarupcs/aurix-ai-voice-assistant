@@ -46,6 +46,15 @@ This update replaces all hardcoded UI states with a fully reactive, callback-dri
 - **Live UI in `ControlsPanel`**: Replaced hardcoded `isConnected = false` / `isConnecting = false` with live values derived from `conectionState` read directly from `useAudioStore`. The Connect and End buttons now reflect the real session state. 
 - **Live UI in `StatusPanel`**: `statusPanel.tsx` now reads `conectionState` and `error` from the store, making the animated status badge (Amber → Blue → Emerald) and the error toast fully reactive to actual network events.
 
+### 🔇 Hardware-Level Mute Control (`LiveManager` → `useAudioStore` → `ControlsPanel`)
+This update introduces a complete mute pipeline that operates directly on the hardware `MediaStream`, rather than simply silencing audio in software:
+
+- **`setMute(isMuted)` in `LiveManager`**: Receives a boolean and iterates over all `getAudioTracks()` on the active `MediaStream`, toggling `track.enabled = !isMuted`. Disabling a hardware track signals the OS-level driver to stop capturing microphone input entirely — more efficient than just dropping packets in software — while keeping the track alive so unmuting is instant without requiring a new `getUserMedia()` call.
+- **`isMuted` + `toggleMute()` in `useAudioStore`**: Adds `isMuted: boolean` to the global store. `toggleMute()` reads the current state, flips it, updates the store via `set()`, and then calls `liveManagerInstance.setMute()` to synchronize the hardware track state. This ensures both the UI and the audio pipeline stay in perfect sync.
+- **Wired Mute Button in `ControlsPanel`**: The in-session mute button's `onClick` is now bound to `toggleMute` from the store. The `isMuted` boolean drives the button icon (Mic / MicOff) and its conditional red styling, reflecting true hardware mute state in the UI.
+
+> **Upcoming**: `VisualizationPanel` `agentState` and `activeScale` are marked with `// todo: make this dynamic`, indicating the orb animation and logo pulse will be driven by real audio volume and AI state in a future update.
+
 ## Setup & Development
 
 ### Important Environment Setup

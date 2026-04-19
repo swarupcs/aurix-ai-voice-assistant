@@ -18,6 +18,15 @@ To process low-latency, raw voice input suitable for the Gemini Live API, we byp
 - **Active Base64 WebSocket Piping**: Utilizing the `@google/genai` Live API method `sendRealtimeInput({ audio: pcmBlob })`, encoded `Int16` sound chunks are fed at ultra-low latencies directly down the secure socket without chunk buffering delays.
 - **Wired UI Interactive Points**: The core user interface, specifically `controls-panel.tsx`, is now wired up to orchestrate `connect()` sessions. The `visualization-panel.tsx` features an immersive pulsing orb and waveform response setup mapped dynamically to AI dialogue interactions.
 
+### 🔊 AI Audio Response & Playback Pipeline (`LiveManager.ts` + `audioUtils.ts`)
+With the microphone input established, this update closes the feedback loop by implementing the full AI-to-speaker audio playback pipeline:
+
+- **Centralized Message Handler (`handleMessage`)**: Replaced inline `onmessage` logging with a dedicated `handleMessage` method bound to the Gemini WebSocket. It parses `LiveServerMessage` responses, extracts the `inlineData` Base64 audio payload from `serverContent.modelTurn.parts[0]`, and immediately dispatches it to the audio playback queue.
+- **Base64 to `Uint8Array` Decoding (`base64ToUint8Array`)**: Added a reverse utility in `audioUtils.ts` that mirrors the send-side encoding. Uses `atob()` to decode the server's Base64 string back into a raw `Uint8Array` byte buffer, ready for audio decoding.
+- **Int16 to Float32 Audio Decoding (`decodeAudioData`)**: Converts the raw server `Uint8Array` (16-bit linear PCM at `24000 Hz`) back into a Web Audio API native `AudioBuffer` by normalizing each `Int16` sample (`/ 32768.0`) into the `[-1.0, 1.0]` float range the browser expects. Supports multi-channel layouts via a parameterized `numChannels` argument.
+- **Gapless Sequential Audio Scheduling (`playAudioChunk`)**: To eliminate the stutter and clicks that occur when audio buffers are played one-by-one, `AudioBufferSourceNode` chunks are scheduled using a monotonically advancing `nextStartTime` clock. Each new chunk is queued to start exactly when the previous one ends (`nextStartTime += audioBuffer.duration`), producing perfectly seamless streaming playback regardless of network jitter.
+- **Active Source Tracking**: Each playing `AudioBufferSourceNode` is tracked in a `Set<AudioBufferSourceNode>`. Nodes auto-remove themselves on the `"ended"` event, keeping a live reference pool for future disconnect/interrupt control.
+
 ## Setup & Development
 
 ### Important Environment Setup

@@ -70,6 +70,8 @@ export const useAudioStore = create<AudioStore>()(
       const response = await fetch('/api/token');
       if (!response.ok) {
         set({ error: 'failed to generate token' });
+
+        return;
       }
 
       const { token } = await response.json();
@@ -130,6 +132,7 @@ export const useAudioStore = create<AudioStore>()(
                 }
               });
             },
+            // implement this, animate when AI is talking.
             onAudioLevel: () => {},
           },
           token.name,

@@ -30,10 +30,10 @@ export class LiveManager {
   private inputTranscription = '';
   private outputTranscription = '';
 
-  constructor(callbacks: LiveManagerCallbacks) {
+  constructor(callbacks: LiveManagerCallbacks, token: string) {
     this.ai = new GoogleGenAI({
-      // IMPORTANT: don't use this in production... (will use ephemeral tokens)
-      apiKey: process.env.NEXT_PUBLIC_GEMINI_API_KEY,
+      apiKey: token,
+      apiVersion: 'v1alpha',
     });
 
     this.callbacks = callbacks;
@@ -69,6 +69,7 @@ export class LiveManager {
           },
           onmessage: this.handleMessage.bind(this),
           onerror: (e) => {
+            console.log(e);
             this.callbacks.onStateChange(ConnectionState.ERROR);
             this.callbacks.onError('Could not connect.');
           },

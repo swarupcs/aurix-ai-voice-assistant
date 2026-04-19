@@ -82,6 +82,13 @@ This update connects the User Interface configuration options natively into the 
 - **System Prompt Generation (`LiveManager`)**: Designed `generateSystemPrompt(config)` to dynamically format a strict instruction set before initiating the WebSocket. It injects the user's selected configurations directly into the prompt (e.g., instructing the AI to "strictly speak in Spanish", "correct mistakes", and "act as a language tutor").
 - **Google Voice Binding (`prebuiltVoiceConfig`)**: Configured the exact `voiceName` chosen by the UI (e.g. `Puck`, `Aoede`, `Charon`) deeply within the `speechConfig` payload connecting to the Gemini WebSocket, instantly assigning the AI's speaking tone and pitch.
 
+### 🔒 Ephemeral Token Security Pipeline (`Api Route` → `useAudioStore` → `LiveManager`)
+To secure the application for production, the client-side API Key exposure has been eliminated by bridging authorization to a secure NodeJS backend handler:
+
+- **Token Fetching Protocol (`useAudioStore`)**: The `connect()` method now halts and executes an `await fetch('/api/token')` to a secure internal route.
+- **Client-Side Key Removal**: `LiveManager` historically held `NEXT_PUBLIC_GEMINI_API_KEY`. This was completely ripped out. The `LiveManager` constructor now strictly accepts a short-lived ephemeral `'token.name'` parameter.
+- **Alpha API Binding**: The GenAI SDK initialization was upgraded to bind `apiVersion: 'v1alpha'` to explicitly support Google's required endpoints for ephemeral token-based WebSocket routing.
+
 ## Setup & Development
 
 ### Important Environment Setup

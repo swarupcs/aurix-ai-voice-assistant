@@ -172,7 +172,17 @@ This update connects the User Interface configuration options natively into the 
 
 ---
 
-## 9. 🗺 Data Flow Diagram
+## 9. 🔒 Ephemeral Token Security Pipeline
+
+To secure the application for production, the client-side API Key exposure has been eliminated by bridging authorization to a secure NodeJS backend handler:
+
+- **Token Fetching Protocol (`useAudioStore`)**: The `connect()` method now halts and executes an `await fetch('/api/token')` to a secure internal route.
+- **Client-Side Key Removal**: `LiveManager` historically held `NEXT_PUBLIC_GEMINI_API_KEY`. This was completely ripped out. The `LiveManager` constructor now strictly accepts a short-lived ephemeral `'token.name'` parameter.
+- **Alpha API Binding**: The GenAI SDK initialization was upgraded to bind `apiVersion: 'v1alpha'` to explicitly support Google's required endpoints for ephemeral token-based WebSocket routing.
+
+---
+
+## 10. 🗺 Data Flow Diagram
 
 ```text
 User speaks

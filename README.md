@@ -34,6 +34,18 @@ This update hardens the playback pipeline against real-world edge cases — inte
 - **`stopAllAudio()` — Full Playback Teardown**: Iterates the active `Set<AudioBufferSourceNode>`, calling `.stop()` on each node inside a `try/catch` to silently handle already-finished sources. The Set is then cleared and `nextStartTime` is reset to `outputAudioContext.currentTime`, leaving the scheduler in a clean state ready for the next response.
 - **Clock Drift Guard in `playAudioChunk`**: If the accumulated `nextStartTime` ever falls behind the `AudioContext`'s live `currentTime` (e.g. after a long pause, an interruption, or tab throttling), it is reset to `currentTime` before scheduling the next chunk. This prevents audio from being scheduled in the past, which would cause the Web Audio API to immediately fire it (causing double-plays or desync artifacts).
 
+### 🔗 Callback-Driven State Architecture (`LiveManager` → `useAudioStore` → UI)
+This update replaces all hardcoded UI states with a fully reactive, callback-driven state pipeline connecting the low-level audio service all the way to the interface:
+
+- **`LiveManagerCallbacks` Interface**: `LiveManager` now accepts a typed `callbacks` object at construction (`onStateChange`, `onError`, `onTranscript`, `onAudioLevel`). This decouples the audio service from any specific state system — the store, not the service, owns the state.
+- **Lifecycle State Transitions in `startSession()`**: The entire session setup is now wrapped in a `try/catch`. State callbacks fire at every critical transition:
+  - `CONNECTING` — emitted immediately before the WebSocket handshake begins.
+  - `CONNECTED` — emitted inside the `onopen` callback when the socket is established.
+  - `ERROR` — emitted in both `onerror` and the `catch` block with a human-readable error message.
+- **Zustand Store as the State Bridge (`useAudioStore`)**: The store instantiates `LiveManager` with inline callbacks that call Zustand's `set()` — `onStateChange: (state) => set({ conectionState: state })` and `onError: (err) => set({ error: err })` — making the entire app reactively aware of the connection lifecycle.
+- **Live UI in `ControlsPanel`**: Replaced hardcoded `isConnected = false` / `isConnecting = false` with live values derived from `conectionState` read directly from `useAudioStore`. The Connect and End buttons now reflect the real session state. 
+- **Live UI in `StatusPanel`**: `statusPanel.tsx` now reads `conectionState` and `error` from the store, making the animated status badge (Amber → Blue → Emerald) and the error toast fully reactive to actual network events.
+
 ## Setup & Development
 
 ### Important Environment Setup

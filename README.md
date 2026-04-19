@@ -64,6 +64,17 @@ This update activates the Gemini Live API's native speech-to-text capabilities, 
 - **Smart Zustand Array Mutation (`useAudioStore`)**: The `onTranscript` callback handles the complex problem of rendering fast-moving partial strings inside a React array. When `isPartial` is true, the store checks `findLastIndex` to locate the active, open string in `state.transcript` and safely mutates it in-place. If no partial string exists, it pushes a brand new object using `crypto.randomUUID()`.
 - **Live Sidebar (`RightSidebar`)**: Refactored the `RightSidebar` to subscribe exclusively to `useAudioStore().transcript`. Instead of rendering hardcoded messages, the component maps through the synced list array, matching styles, avatars, and side alignments directly to the `sender: 'user' | 'model'` property.
 
+### 🧹 Session Teardown & Garbage Collection (`LiveManager` → `useAudioStore` → `ControlsPanel`)
+To ensure smooth browser memory management and prevent zombie microphone threads, a structured teardown pipeline has been established:
+
+- **Aggressive Cleanup in `LiveManager.disconnect()`**: When terminating a session, the manager explicitly cuts off deep memory nodes:
+  - Halts active buffers via `stopAllAudio()`.
+  - Terminates the WebSocket (`activeSession.close()`).
+  - Severes hardware-bound paths (`inputSource.disconnect()`, `workletNode.disconnect()`, `outputNode.disconnect()`).
+  - Suspends and shuts down processing scopes (`inputAudioContext.close()`, `outputAudioContext.close()`), stopping the physical AudioContext worker threads.
+- **Zustand Reference Flushing**: In `useAudioStore`, the `disconnect()` action forces standard state resets but critically overwrites the `liveManagerInstance` reference back to `undefined`. This destroys the object graph entirely, allowing the JS Garbage Collector to sweep the entire session off the heap.
+- **Red "End Connect" Interface**: Wired the destructive `.disconnect()` function natively into the `ControlsPanel` End button.
+
 ## Setup & Development
 
 ### Important Environment Setup

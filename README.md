@@ -55,6 +55,15 @@ This update introduces a complete mute pipeline that operates directly on the ha
 
 > **Upcoming**: `VisualizationPanel` `agentState` and `activeScale` are marked with `// todo: make this dynamic`, indicating the orb animation and logo pulse will be driven by real audio volume and AI state in a future update.
 
+### 📝 Real-Time Transcription Pipeline (`LiveManager` → `useAudioStore` → `RightSidebar`)
+This update activates the Gemini Live API's native speech-to-text capabilities, passing words securely up to the UI as they are spoken by the User and AI model:
+
+- **Enabling Gemini Transcripts**: Updated the `LiveManager` config payload to pass `inputAudioTranscription: {}` and `outputAudioTranscription: {}`, unlocking Google's multimodal transcription models.
+- **WebSocket Chunk Aggregation (`LiveManager`)**: Designed `inputTranscription` and `outputTranscription` string buffers. Within `handleMessage`, partial text fragments from `serverContent.inputTranscription.text` (User) and `serverContent.outputTranscription.text` (Model) are actively streamed up to the UI via the `onTranscript(sender, text, isPartial)` callback. 
+- **Turn Complete Event**: When Gemini signals `serverContent.turnComplete`, the `LiveManager` emits one final payload with `isPartial=false` and completely dumps the string buffers.
+- **Smart Zustand Array Mutation (`useAudioStore`)**: The `onTranscript` callback handles the complex problem of rendering fast-moving partial strings inside a React array. When `isPartial` is true, the store checks `findLastIndex` to locate the active, open string in `state.transcript` and safely mutates it in-place. If no partial string exists, it pushes a brand new object using `crypto.randomUUID()`.
+- **Live Sidebar (`RightSidebar`)**: Refactored the `RightSidebar` to subscribe exclusively to `useAudioStore().transcript`. Instead of rendering hardcoded messages, the component maps through the synced list array, matching styles, avatars, and side alignments directly to the `sender: 'user' | 'model'` property.
+
 ## Setup & Development
 
 ### Important Environment Setup

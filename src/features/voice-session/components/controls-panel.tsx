@@ -1,13 +1,13 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Loader2, Mic, MicOff, PhoneOff } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
 import { ConnectionState } from '@/types';
 import { Button } from '@/components/ui/button';
 import { MicSelector } from '@/components/ui/mic-selector';
-import { useAudioStore } from '@/store/useAudioStore';
+import { useAudioStore } from '@/features/voice-session/store/useAudioStore';
 
 function ControlsPanel() {
   const { connect, disconnect, conectionState, toggleMute, isMuted } =
@@ -19,33 +19,32 @@ function ControlsPanel() {
   const isConnecting = conectionState === ConnectionState.CONNECTING;
 
   return (
-    <div className='w-full max-w-[90vw] sm:max-w-fit mx-auto transition-all duration-300 ease-in-out'>
+    <div className='w-full max-w-[95vw] sm:max-w-fit mx-auto transition-all duration-500 ease-in-out pb-4'>
       <div
         className={cn(
-          'flex items-center justify-between sm:justify-center gap-3 sm:gap-4 p-3 sm:p-2',
-          'rounded-2xl sm:rounded-full',
-          'border',
-          'backdrop-blur-xl shadow-xl dark:shadow-black/50',
-          'transition-all duration-300',
+          'flex items-center justify-between sm:justify-center gap-2 sm:gap-3 p-2 sm:p-2',
+          'rounded-[2rem]',
+          'border border-white/20 dark:border-white/10',
+          'bg-background/40 backdrop-blur-3xl shadow-2xl dark:shadow-[0_0_50px_rgba(0,0,0,0.5)]',
+          'transition-all duration-500 hover:bg-background/50',
         )}
       >
         {/* Mic Selector */}
-        <div className='flex-1 sm:flex-none min-w-0 sm:px-2'>
+        <div className='flex-1 sm:flex-none min-w-0 sm:px-3'>
           <MicSelector
             value={selectedDevice}
             onValueChange={setSelectedDevice}
-            // Pass global mute state here to reflect UI changes in the selector too
             muted={false}
             onMutedChange={() => {}}
             disabled={isConnecting}
-            className='w-full sm:w-auto'
+            className='w-full sm:w-56 bg-transparent border-0 hover:bg-white/10 dark:hover:bg-white/5 rounded-full shadow-none focus:ring-0 transition-colors text-foreground'
           />
         </div>
 
-        <div className='hidden sm:block w-px h-8 mx-1' />
+        <div className='hidden sm:block w-[1px] h-8 bg-border/40 mx-1' />
 
         {/* Action Buttons */}
-        <div className='flex items-center gap-2 shrink-0'>
+        <div className='flex items-center gap-2 shrink-0 pr-1'>
           {/* 1. MUTE BUTTON (Visible only when Connected) */}
           {isConnected && (
             <Button
@@ -53,10 +52,10 @@ function ControlsPanel() {
               variant={'secondary'}
               size='icon'
               className={cn(
-                'h-12 w-12 rounded-full',
+                'h-12 w-12 rounded-full transition-all duration-300 shadow-md',
                 isMuted
-                  ? 'bg-red-100 text-red-600 border-red-200 hover:bg-red-200 dark:bg-red-900/20 dark:text-red-500 dark:border-red-900/50'
-                  : 'bg-transparent hover:bg-zinc-100 dark:hover:bg-zinc-800',
+                  ? 'bg-destructive/90 text-destructive-foreground hover:bg-destructive scale-95 ring-4 ring-destructive/20'
+                  : 'bg-background/80 text-foreground hover:bg-background hover:scale-105 border border-white/10',
               )}
             >
               {isMuted ? (
@@ -73,14 +72,15 @@ function ControlsPanel() {
               onClick={connect}
               size='lg'
               className={cn(
-                'rounded-xl sm:rounded-full',
-                'h-12 sm:h-11 px-6',
-                'bg-primary text-primary-foreground font-semibold',
+                'rounded-full',
+                'h-12 px-8',
+                'bg-gradient-to-r from-primary to-blue-600 text-white font-bold tracking-wide',
+                'shadow-lg shadow-primary/20 hover:shadow-primary/40 hover:scale-105 border border-white/10',
                 'transition-all duration-300 active:scale-95',
               )}
             >
-              <Mic className='h-5 w-5 mr-2' />
-              <span>Connect</span>
+              <Mic className='h-5 w-5 mr-2 animate-pulse' />
+              <span>Start Session</span>
             </Button>
           ) : (
             <Button
@@ -89,9 +89,10 @@ function ControlsPanel() {
               variant='destructive'
               size='lg'
               className={cn(
-                'rounded-xl sm:rounded-full',
-                'h-12 sm:h-11 px-6',
-                'shadow-md hover:shadow-lg',
+                'rounded-full',
+                'h-12 px-8',
+                'bg-gradient-to-r from-destructive/90 to-red-600 text-white font-bold tracking-wide border border-white/10',
+                'shadow-lg shadow-destructive/20 hover:shadow-destructive/40 hover:scale-105',
                 'transition-all duration-300 active:scale-95',
               )}
             >
@@ -100,7 +101,7 @@ function ControlsPanel() {
               ) : (
                 <PhoneOff className='h-5 w-5 mr-2' />
               )}
-              <span>{isConnecting ? 'Connecting...' : 'End'}</span>
+              <span>{isConnecting ? 'Connecting...' : 'End Session'}</span>
             </Button>
           )}
         </div>

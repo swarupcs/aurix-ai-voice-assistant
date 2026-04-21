@@ -4,10 +4,11 @@ import {
   AVAILABLE_TOPICS,
   AVAILABLE_VOICES,
 } from '@/lib/constants';
-import { LiveManager } from '@/services/liveManager';
+import { LiveManager } from '@/features/voice-session/lib/liveManager';
 import { ConnectionState, TranscriptItem } from '@/types';
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
+import { saveConversation } from '@/server/actions/transcript';
 
 type AudioStore = {
   conectionState: ConnectionState;
@@ -166,10 +167,26 @@ export const useAudioStore = create<AudioStore>()(
       if (state.liveManagerInstance) {
         state.liveManagerInstance.disconnect();
 
+        // Save conversation if there are completed messages
+        const completedMessages = state.transcript.filter(m => !m.isPartial && m.text.trim() !== '');
+        if (completedMessages.length > 0) {
+          const messagesToSave = completedMessages.map(m => ({
+            role: m.sender === 'user' ? 'user' : 'model',
+            content: m.text,
+          }));
+          
+          try {
+            await saveConversation(state.selectedTopic || "Conversation", messagesToSave);
+          } catch (e) {
+            console.error("Failed to save conversation:", e);
+          }
+        }
+
         set({ liveManagerInstance: undefined });
 
         set({
           conectionState: ConnectionState.DISCONNECTED,
+          transcript: [], // Clear after saving
         });
       }
     },

@@ -39,29 +39,39 @@ export function MicSelector({
 }: MicSelectorProps) {
   const { devices, loading, error, hasPermission, loadDevices } =
     useAudioDevices();
-  const [selectedDevice, setSelectedDevice] = useState<string>(value || '');
+  
+  // Use controlled state pattern for selected device
+  const isControlled = value !== undefined;
+  const [internalSelectedDevice, setInternalSelectedDevice] = useState<string>('');
+  
+  // Derive the actual selected device
+  let selectedDevice = isControlled ? value : internalSelectedDevice;
+
+  // Automatically select the first device if none is selected
+  const defaultDeviceId = devices[0]?.deviceId;
+  
+  if (!selectedDevice && defaultDeviceId) {
+    selectedDevice = defaultDeviceId;
+    // We update the parent synchronously during render if it's uncontrolled or if parent expects updates
+    // This is safe because it's a derived state assignment conceptually, but we must notify the parent via a timeout
+    // to avoid the "Cannot update a component while rendering a different component" warning
+    if (!isControlled) {
+      setTimeout(() => {
+        setInternalSelectedDevice(defaultDeviceId);
+      }, 0);
+    }
+    if (onValueChange) {
+      setTimeout(() => {
+        onValueChange(defaultDeviceId);
+      }, 0);
+    }
+  }
+
   const [internalMuted, setInternalMuted] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
   // Use controlled muted if provided, otherwise use internal state
   const isMuted = muted !== undefined ? muted : internalMuted;
-
-  // Update internal state when controlled value changes
-  useEffect(() => {
-    if (value !== undefined) {
-      setSelectedDevice(value);
-    }
-  }, [value]);
-
-  // Select first device by default
-  const defaultDeviceId = devices[0]?.deviceId || '';
-  useEffect(() => {
-    if (!selectedDevice && defaultDeviceId) {
-      const newDevice = defaultDeviceId;
-      setSelectedDevice(newDevice);
-      onValueChange?.(newDevice);
-    }
-  }, [defaultDeviceId, selectedDevice, onValueChange]);
 
   const currentDevice = devices.find((d) => d.deviceId === selectedDevice) ||
     devices[0] || {
@@ -71,7 +81,9 @@ export function MicSelector({
 
   const handleDeviceSelect = (deviceId: string, e?: React.MouseEvent) => {
     e?.preventDefault();
-    setSelectedDevice(deviceId);
+    if (!isControlled) {
+      setInternalSelectedDevice(deviceId);
+    }
     onValueChange?.(deviceId);
   };
 
@@ -252,7 +264,19 @@ export function useAudioDevices() {
   }, [loading]);
 
   useEffect(() => {
-    loadDevicesWithoutPermission();
+    let isMounted = true;
+    
+    // Defer initial load to avoid sync setState during render warnings
+    const timer = setTimeout(() => {
+      if (isMounted) {
+        loadDevicesWithoutPermission();
+      }
+    }, 0);
+
+    return () => {
+      isMounted = false;
+      clearTimeout(timer);
+    };
   }, [loadDevicesWithoutPermission]);
 
   useEffect(() => {

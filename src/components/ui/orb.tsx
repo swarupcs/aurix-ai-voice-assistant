@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useRef } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { useTexture } from "@react-three/drei"
 import { Canvas, useFrame, useThree } from "@react-three/fiber"
 import * as THREE from "three"
@@ -94,9 +94,6 @@ function Scene({
   const { gl } = useThree()
   const circleRef =
     useRef<THREE.Mesh<THREE.CircleGeometry, THREE.ShaderMaterial>>(null)
-  const initialColorsRef = useRef<[string, string]>(colors)
-  const targetColor1Ref = useRef(new THREE.Color(colors[0]))
-  const targetColor2Ref = useRef(new THREE.Color(colors[1]))
   const animSpeedRef = useRef(0.1)
   const perlinNoiseTexture = useTexture(
     "https://storage.googleapis.com/eleven-public-cdn/images/perlin-noise.png"
@@ -129,9 +126,13 @@ function Scene({
     )
   }, [manualOutput, outputVolumeRef, getOutputVolume])
 
+  const [initialSeed] = useState(() => Math.floor(Math.random() * 2 ** 32))
+  const [targetColor1] = useState(() => new THREE.Color(colors[0]))
+  const [targetColor2] = useState(() => new THREE.Color(colors[1]))
+
   const random = useMemo(
-    () => splitmix32(seed ?? Math.floor(Math.random() * 2 ** 32)),
-    [seed]
+    () => splitmix32(seed ?? initialSeed),
+    [seed, initialSeed]
   )
   const offsets = useMemo(
     () =>
@@ -140,9 +141,9 @@ function Scene({
   )
 
   useEffect(() => {
-    targetColor1Ref.current = new THREE.Color(colors[0])
-    targetColor2Ref.current = new THREE.Color(colors[1])
-  }, [colors])
+    targetColor1.set(colors[0])
+    targetColor2.set(colors[1])
+  }, [colors, targetColor1, targetColor2])
 
   useEffect(() => {
     const apply = () => {
@@ -162,14 +163,17 @@ function Scene({
   }, [])
 
   useFrame((_, delta: number) => {
-    const mat = circleRef.current?.material
+    if (!circleRef.current) return
+    const mat = circleRef.current.material
     if (!mat) return
     const live = colorsRef?.current
     if (live) {
-      if (live[0]) targetColor1Ref.current.set(live[0])
-      if (live[1]) targetColor2Ref.current.set(live[1])
+      if (live[0]) targetColor1.set(live[0])
+      if (live[1]) targetColor2.set(live[1])
     }
     const u = mat.uniforms
+    
+    // Create new uniforms object or mutate value directly
     u.uTime.value += delta * 0.5
 
     if (u.uOpacity.value < 1) {
@@ -213,8 +217,8 @@ function Scene({
     u.uAnimation.value += delta * animSpeedRef.current
     u.uInputVolume.value = curInRef.current
     u.uOutputVolume.value = curOutRef.current
-    u.uColor1.value.lerp(targetColor1Ref.current, 0.08)
-    u.uColor2.value.lerp(targetColor2Ref.current, 0.08)
+    u.uColor1.value.lerp(targetColor1, 0.08)
+    u.uColor2.value.lerp(targetColor2, 0.08)
   })
 
   useEffect(() => {
@@ -230,17 +234,21 @@ function Scene({
       canvas.removeEventListener("webglcontextlost", onContextLost, false)
   }, [gl])
 
-  const uniforms = useMemo(() => {
-    perlinNoiseTexture.wrapS = THREE.RepeatWrapping
-    perlinNoiseTexture.wrapT = THREE.RepeatWrapping
-    const isDark =
-      typeof document !== "undefined" &&
-      document.documentElement.classList.contains("dark")
+  // Setup uniforms directly without useMemo/useEffect to avoid React Compiler limitations on refs and mutations
+  const [uniforms] = useState(() => {
+    const isDark = typeof document !== "undefined" && document.documentElement.classList.contains("dark")
+    
+    // We can safely modify the texture here since it's initial setup
+    const texture = perlinNoiseTexture.clone()
+    texture.wrapS = THREE.RepeatWrapping
+    texture.wrapT = THREE.RepeatWrapping
+    texture.needsUpdate = true
+
     return {
-      uColor1: new THREE.Uniform(new THREE.Color(initialColorsRef.current[0])),
-      uColor2: new THREE.Uniform(new THREE.Color(initialColorsRef.current[1])),
+      uColor1: new THREE.Uniform(new THREE.Color(colors[0])),
+      uColor2: new THREE.Uniform(new THREE.Color(colors[1])),
       uOffsets: { value: offsets },
-      uPerlinTexture: new THREE.Uniform(perlinNoiseTexture),
+      uPerlinTexture: new THREE.Uniform(texture),
       uTime: new THREE.Uniform(0),
       uAnimation: new THREE.Uniform(0.1),
       uInverted: new THREE.Uniform(isDark ? 1 : 0),
@@ -248,7 +256,7 @@ function Scene({
       uOutputVolume: new THREE.Uniform(0),
       uOpacity: new THREE.Uniform(0),
     }
-  }, [perlinNoiseTexture, offsets])
+  })
 
   return (
     <mesh ref={circleRef}>

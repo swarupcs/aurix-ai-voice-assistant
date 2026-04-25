@@ -19,9 +19,10 @@ import { cn } from '@/lib/utils';
 import { Textarea } from '@/components/ui/textarea';
 
 function RightSidebar() {
-  const { transcript: items, liveNotes, setLiveNotes } = useAudioStore();
+  const items = useAudioStore((state) => state.transcript);
+  const liveNotes = useAudioStore((state) => state.liveNotes);
+  const setLiveNotes = useAudioStore((state) => state.setLiveNotes);
   const [sidebarTab, setSidebarTab] = useState<'transcript' | 'notes'>('transcript');
-
   return (
     <aside className='hidden lg:flex flex-col h-full flex-none w-80 lg:w-96 md:py-4 md:pr-4 transition-all z-20'>
       <div className="flex flex-col h-full w-full bg-background/60 backdrop-blur-3xl md:border border-border/20 md:rounded-[2rem] overflow-hidden md:shadow-2xl ring-1 ring-white/5">

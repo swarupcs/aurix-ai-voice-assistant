@@ -20,13 +20,13 @@ export function createPCMBlob(data: Float32Array) {
 
 function arrayBufferToBase64(data: Int16Array) {
   const bytes = new Uint8Array(data.buffer);
-
-  let str = '';
-  for (let i = 0; i < bytes.byteLength; i++) {
-    str += String.fromCharCode(bytes[i]);
+  const chunkSize = 8192;
+  let binary = '';
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    const chunk = bytes.subarray(i, i + chunkSize);
+    binary += String.fromCharCode.apply(null, chunk as unknown as number[]);
   }
-
-  return btoa(str);
+  return window.btoa(binary);
 }
 
 export function base64ToUint8Array(base64: string): Uint8Array {

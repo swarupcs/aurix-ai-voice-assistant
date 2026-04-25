@@ -45,12 +45,13 @@ export const LiveWaveform = ({
   historySize = 60,
   updateRate = 30,
   mode = "static",
+  mediaStream = null, // Add prop to accept existing stream
   onError,
   onStreamReady,
   onStreamEnd,
   className,
   ...props
-}: LiveWaveformProps) => {
+  }: LiveWaveformProps & { mediaStream?: MediaStream | null }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const historyRef = useRef<number[]>([])
@@ -252,7 +253,7 @@ export const LiveWaveform = ({
 
     const setupMicrophone = async () => {
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({
+        const stream = mediaStream || await navigator.mediaDevices.getUserMedia({
           audio: deviceId
             ? {
                 deviceId: { exact: deviceId },
@@ -266,7 +267,10 @@ export const LiveWaveform = ({
                 autoGainControl: true,
               },
         })
-        streamRef.current = stream
+        
+        if (!mediaStream) {
+          streamRef.current = stream
+        }
         onStreamReady?.(stream)
 
         const AudioContextConstructor =

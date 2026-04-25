@@ -1,18 +1,25 @@
 class MicProcessor extends AudioWorkletProcessor {
-  // sampleRate/RenderQuantumSize  = 16000/128 = 125 times / second - 8ms
+  constructor() {
+    super();
+    this.bufferSize = 4096; // 256ms of audio at 16kHz
+    this.buffer = new Float32Array(this.bufferSize);
+    this.bufferIndex = 0;
+  }
+
   process(inputs) {
-    if (!inputs.length) return true;
+    if (!inputs.length || !inputs[0].length) return true;
 
-    const input = inputs[0]; // mono channel
-    if (!input.length) return true;
+    const channelData = inputs[0][0]; // mono channel
 
-    const channelData = input[0];
+    for (let i = 0; i < channelData.length; i++) {
+      this.buffer[this.bufferIndex++] = channelData[i];
+      if (this.bufferIndex >= this.bufferSize) {
+        // Send a copy of the buffer to the main thread
+        this.port.postMessage(this.buffer.slice(0));
+        this.bufferIndex = 0;
+      }
+    }
 
-    // copy buffer for reuse
-    const pcm = new Float32Array(channelData.length);
-    pcm.set(channelData);
-
-    this.port.postMessage(pcm);
     return true;
   }
 }

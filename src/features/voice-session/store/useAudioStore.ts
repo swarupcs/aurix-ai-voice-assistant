@@ -36,6 +36,7 @@ type AudioStore = {
   connect: () => Promise<void>;
   disconnect: () => Promise<void>;
   toggleMute: () => void;
+  getMediaStream: () => MediaStream | null;
 };
 
 export const useAudioStore = create<AudioStore>()(
@@ -54,6 +55,14 @@ export const useAudioStore = create<AudioStore>()(
 
     activeTab: 'live',
     liveNotes: '',
+
+    getMediaStream: () => {
+      const state = get();
+      if (state.liveManagerInstance) {
+        return (state.liveManagerInstance as any).mediaStream || null;
+      }
+      return null;
+    },
 
     setSelectedLanguage: (lang: string) => {
       set({ selectedLanguage: lang });
@@ -121,32 +130,32 @@ export const useAudioStore = create<AudioStore>()(
             onTranscript: (sender, text, isPartial) => {
               return set((state) => {
                 const newTranscript = [...state.transcript];
+                
+                if (!text.trim() && !isPartial) return { transcript: newTranscript };
 
-                const existingIndex = newTranscript.findLastIndex((item) => {
-                  return item.sender === sender && item.isPartial;
-                });
+                // Look strictly for an active partial from this sender
+                const existingPartialIndex = newTranscript.findLastIndex(
+                  (item) => item.sender === sender && item.isPartial,
+                );
 
-                // partial message exists
-                if (existingIndex !== -1) {
-                  newTranscript[existingIndex] = {
-                    ...newTranscript[existingIndex],
-                    text,
+                if (existingPartialIndex !== -1) {
+                  // We have an active partial sentence, update it
+                  newTranscript[existingPartialIndex] = {
+                    ...newTranscript[existingPartialIndex],
+                    text: text,
                     isPartial,
                   };
-
-                  return { transcript: newTranscript };
-                } else {
-                  if (text) {
-                    newTranscript.push({
-                      id: crypto.randomUUID(),
-                      sender,
-                      text,
-                      isPartial,
-                    });
-                  }
-
-                  return { transcript: newTranscript };
+                } else if (text.trim()) {
+                  // No active partial sentence, create a new one
+                  newTranscript.push({
+                    id: crypto.randomUUID(),
+                    sender,
+                    text: text,
+                    isPartial,
+                  });
                 }
+
+                return { transcript: newTranscript };
               });
             },
             // implement this, animate when AI is talking.

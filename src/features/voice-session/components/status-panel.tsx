@@ -6,10 +6,10 @@ import { ConnectionState } from '@/types';
 import { AlertCircle } from 'lucide-react';
 
 function StatusPanel() {
-  const { conectionState, error } = useAudioStore();
+  const conectionState = useAudioStore((state) => state.conectionState);
+  const error = useAudioStore((state) => state.error);
 
-  const isConnected = conectionState === ConnectionState.CONNECTED;
-  const isConnecting = conectionState === ConnectionState.CONNECTING;
+  const isConnected = conectionState === ConnectionState.CONNECTED;  const isConnecting = conectionState === ConnectionState.CONNECTING;
 
   return (
     <div className='absolute top-6 left-0 right-0 flex flex-col items-center gap-3 z-20 pointer-events-none'>

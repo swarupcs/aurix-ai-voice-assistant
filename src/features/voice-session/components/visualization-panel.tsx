@@ -8,8 +8,10 @@ import { ConnectionState } from '@/types';
 import { cn } from '@/lib/utils';
 
 function VisualizationPanel() {
-  const { conectionState, volume } = useAudioStore();
-  
+  const conectionState = useAudioStore((state) => state.conectionState);
+  const volume = useAudioStore((state) => state.volume);
+  const getMediaStream = useAudioStore((state) => state.getMediaStream);
+
   const isConnected = conectionState === ConnectionState.CONNECTED;
   const isConnecting = conectionState === ConnectionState.CONNECTING;
   
@@ -79,6 +81,7 @@ function VisualizationPanel() {
           barGap={6}
           height={60}
           fadeEdges={true}
+          mediaStream={getMediaStream()}
         />
       </div>
     </div>

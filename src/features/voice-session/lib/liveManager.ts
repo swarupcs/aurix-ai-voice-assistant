@@ -32,6 +32,7 @@ export class LiveManager {
 
   private inputTranscription = '';
   private outputTranscription = '';
+  private audioQueue: Promise<void> = Promise.resolve();
 
   constructor(callbacks: LiveManagerCallbacks, token: string) {
     this.ai = new GoogleGenAI({
@@ -84,18 +85,20 @@ export class LiveManager {
 
       this.inputAudioContext = new AudioContext({
         sampleRate: INPUT_SAMPLE_RATE,
+        latencyHint: 'interactive',
       });
 
       this.outputAudioContext = new AudioContext({
         sampleRate: OUTPUT_SAMPLE_RATE,
+        latencyHint: 'interactive',
       });
 
       if (this.inputAudioContext.state === 'suspended') {
-        this.inputAudioContext.resume();
+        await this.inputAudioContext.resume();
       }
 
       if (this.outputAudioContext.state === 'suspended') {
-        this.outputAudioContext.resume();
+        await this.outputAudioContext.resume();
       }
 
       this.outputNode = this.outputAudioContext.createGain();
@@ -121,7 +124,7 @@ export class LiveManager {
       }, 50);
 
       await this.inputAudioContext.audioWorklet.addModule(
-        '/worklets/mic-processor.js',
+        `/worklets/mic-processor.js?v=${Date.now()}`
       );
 
       this.workletNode = new AudioWorkletNode(
@@ -130,6 +133,8 @@ export class LiveManager {
       );
 
       this.workletNode.port.onmessage = (event) => {
+        if (this.isMuted) return;
+
         const pcmBlob = createPCMBlob(event.data as Float32Array);
 
         this.activeSession?.sendRealtimeInput({
@@ -185,26 +190,40 @@ export class LiveManager {
       this.stopAllAudio();
     }
 
-    if (serverContent?.inputTranscription?.text) {
-      this.inputTranscription += serverContent?.inputTranscription?.text;
-
-      this.callbacks.onTranscript('user', this.inputTranscription, true);
+    const inputT = serverContent?.inputTranscription;
+    if (inputT) {
+      if (inputT.text) {
+        this.inputTranscription += inputT.text;
+      }
+      if (this.inputTranscription.trim()) {
+        this.callbacks.onTranscript('user', this.inputTranscription, !inputT.finished);
+        if (inputT.finished) {
+          this.inputTranscription = '';
+        }
+      }
     }
 
-    if (serverContent?.outputTranscription?.text) {
-      this.outputTranscription += serverContent?.outputTranscription?.text;
-
-      this.callbacks.onTranscript('model', this.outputTranscription, true);
+    const outputT = serverContent?.outputTranscription;
+    if (outputT) {
+      if (outputT.text) {
+        this.outputTranscription += outputT.text;
+      }
+      if (this.outputTranscription.trim()) {
+        this.callbacks.onTranscript('model', this.outputTranscription, !outputT.finished);
+        if (outputT.finished) {
+          this.outputTranscription = '';
+        }
+      }
     }
 
     if (serverContent?.turnComplete) {
-      if (this.inputTranscription) {
+      // Safety fallback to commit partials if a turn strictly ends
+      if (this.inputTranscription.trim()) {
         this.callbacks.onTranscript('user', this.inputTranscription, false);
-
         this.inputTranscription = '';
       }
 
-      if (this.outputTranscription) {
+      if (this.outputTranscription.trim()) {
         this.callbacks.onTranscript('model', this.outputTranscription, false);
         this.outputTranscription = '';
       }
@@ -214,7 +233,9 @@ export class LiveManager {
 
     if (!base64Data) return;
 
-    await this.playAudioChunk(base64Data as string);
+    this.audioQueue = this.audioQueue.then(() =>
+      this.playAudioChunk(base64Data as string)
+    );
   }
 
   async playAudioChunk(audioData: string) {
@@ -222,35 +243,43 @@ export class LiveManager {
 
     if (!this.outputAudioContext || !this.outputNode) return;
 
-    const audioBuffer = await decodeAudioData(
+    // Decode audio data immediately without waiting in the queue
+    const audioBufferPromise = decodeAudioData(
       uintData,
       this.outputAudioContext,
       OUTPUT_SAMPLE_RATE,
       1,
     );
 
-    if (this.nextStartTime < this.outputAudioContext.currentTime) {
-      this.nextStartTime = this.outputAudioContext.currentTime;
-    }
+    // Queue only the playback scheduling to ensure ordered output
+    this.audioQueue = this.audioQueue.then(async () => {
+      const audioBuffer = await audioBufferPromise;
 
-    const source = this.outputAudioContext.createBufferSource();
+      if (this.nextStartTime < this.outputAudioContext!.currentTime) {
+        this.nextStartTime = this.outputAudioContext!.currentTime;
+      }
 
-    source.buffer = audioBuffer;
+      const source = this.outputAudioContext!.createBufferSource();
 
-    source.connect(this.outputNode);
+      source.buffer = audioBuffer;
 
-    source.start(this.nextStartTime);
+      source.connect(this.outputNode!);
 
-    this.nextStartTime += audioBuffer.duration;
+      source.start(this.nextStartTime);
 
-    source.addEventListener('ended', () => {
-      this.sources.delete(source);
+      this.nextStartTime += audioBuffer.duration;
+
+      source.addEventListener('ended', () => {
+        this.sources.delete(source);
+      });
+
+      this.sources.add(source);
     });
-
-    this.sources.add(source);
   }
 
   async stopAllAudio() {
+    this.audioQueue = Promise.resolve();
+
     this.sources.forEach((source) => {
       try {
         source.stop();

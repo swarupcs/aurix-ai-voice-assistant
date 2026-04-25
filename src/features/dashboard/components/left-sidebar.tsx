@@ -88,13 +88,21 @@ function LeftSidebar() {
     <Sidebar className="border-none md:bg-transparent bg-background/95 md:p-4 transition-all z-20">
       <div className="flex flex-col h-full w-full bg-background/60 backdrop-blur-3xl md:border border-border/20 md:rounded-[2rem] overflow-hidden md:shadow-2xl ring-1 ring-white/5">
         <SidebarHeader className="border-b border-border/10 p-5 bg-gradient-to-b from-background/50 to-transparent">
-          <SidebarHeaderComponent icon={Settings2} title="Configuration" />
+          <div className="flex items-center gap-3">
+             <div className="p-2 rounded-xl bg-primary/10 text-primary">
+                <Settings2 className="w-5 h-5" />
+             </div>
+             <div>
+                <h2 className="text-sm font-bold tracking-tight">Configuration</h2>
+                <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">Session Settings</p>
+             </div>
+          </div>
         </SidebarHeader>
 
         <SidebarContent className="px-5 py-6 space-y-8 custom-scrollbar">
-          <SidebarGroup>
-            <SidebarGroupLabel className="flex items-center gap-2 font-bold text-[11px] uppercase tracking-widest text-muted-foreground/70 mb-3">
-              <Globe className="w-4 h-4 text-primary/70" /> Language
+          <SidebarGroup className="p-0">
+            <SidebarGroupLabel className="flex items-center gap-2 font-bold text-[10px] uppercase tracking-[0.2em] text-muted-foreground/50 mb-3 px-0">
+              <Globe className="w-3.5 h-3.5 text-primary/40" /> Language
             </SidebarGroupLabel>
             <SidebarGroupContent>
               <Select

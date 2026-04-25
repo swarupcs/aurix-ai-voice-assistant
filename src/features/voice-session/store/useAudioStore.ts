@@ -23,10 +23,15 @@ type AudioStore = {
   selectedTopic: string;
   selectedAssistantVoice: string;
 
+  activeTab: 'live' | 'history' | 'analytics';
+  liveNotes: string;
+
   setSelectedLanguage: (lang: string) => void;
   setSelectedProficiencyLevel: (prof: string) => void;
   setSelectedTopic: (topic: string) => void;
   setSelectedAssistantvoice: (voice: string) => void;
+  setActiveTab: (tab: 'live' | 'history' | 'analytics') => void;
+  setLiveNotes: (notes: string) => void;
 
   connect: () => Promise<void>;
   disconnect: () => Promise<void>;
@@ -47,6 +52,9 @@ export const useAudioStore = create<AudioStore>()(
     selectedTopic: AVAILABLE_TOPICS[0],
     selectedAssistantVoice: AVAILABLE_VOICES[0].name,
 
+    activeTab: 'live',
+    liveNotes: '',
+
     setSelectedLanguage: (lang: string) => {
       set({ selectedLanguage: lang });
     },
@@ -58,6 +66,12 @@ export const useAudioStore = create<AudioStore>()(
     },
     setSelectedAssistantvoice: (voice: string) => {
       set({ selectedAssistantVoice: voice });
+    },
+    setActiveTab: (tab: 'live' | 'history' | 'analytics') => {
+      set({ activeTab: tab });
+    },
+    setLiveNotes: (notes: string) => {
+      set({ liveNotes: notes });
     },
 
     toggleMute: () => {

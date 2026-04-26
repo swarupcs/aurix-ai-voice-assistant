@@ -7,6 +7,7 @@ export const INPUT_SAMPLE_RATE = 16000;
 export const OUTPUT_SAMPLE_RATE = 24000;
 
 export const AVAILABLE_TOPICS = [
+  'Casual Conversation',
   'Free Chat',
   'Business Meeting',
   'Travel & Directions',
@@ -14,6 +15,13 @@ export const AVAILABLE_TOPICS = [
   'Ordering Food',
   'Daily Routine',
   'Movies & Hobbies',
+];
+
+export const AVAILABLE_CONVERSATION_TYPES = [
+  'Language Practice',
+  'General Assistant',
+  'Interview Prep',
+  'Roleplay',
 ];
 
 // BCP 47 Standard: Language-Region

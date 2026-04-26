@@ -3,6 +3,7 @@ import {
   AVAILABLE_PROFICIENCY_LEVELS,
   AVAILABLE_TOPICS,
   AVAILABLE_VOICES,
+  AVAILABLE_CONVERSATION_TYPES,
 } from '@/lib/constants';
 import { LiveManager } from '@/features/voice-session/lib/liveManager';
 import { ConnectionState, TranscriptItem } from '@/types';
@@ -24,6 +25,7 @@ type AudioStore = {
   selectedProficiencyLevel: string;
   selectedTopic: string;
   selectedAssistantVoice: string;
+  selectedConversationType: string;
 
   activeTab: 'live' | 'history' | 'analytics';
   liveNotes: string;
@@ -32,6 +34,7 @@ type AudioStore = {
   setSelectedProficiencyLevel: (prof: string) => void;
   setSelectedTopic: (topic: string) => void;
   setSelectedAssistantvoice: (voice: string) => void;
+  setSelectedConversationType: (type: string) => void;
   setActiveTab: (tab: 'live' | 'history' | 'analytics') => void;
   setLiveNotes: (notes: string) => void;
 
@@ -56,6 +59,7 @@ export const useAudioStore = create<AudioStore>()(
     selectedProficiencyLevel: AVAILABLE_PROFICIENCY_LEVELS[0].label,
     selectedTopic: AVAILABLE_TOPICS[0],
     selectedAssistantVoice: AVAILABLE_VOICES[0].name,
+    selectedConversationType: AVAILABLE_CONVERSATION_TYPES[0],
 
     activeTab: 'live',
     liveNotes: '',
@@ -79,6 +83,9 @@ export const useAudioStore = create<AudioStore>()(
     },
     setSelectedAssistantvoice: (voice: string) => {
       set({ selectedAssistantVoice: voice });
+    },
+    setSelectedConversationType: (type: string) => {
+      set({ selectedConversationType: type });
     },
     setActiveTab: (tab: 'live' | 'history' | 'analytics') => {
       set({ activeTab: tab });
@@ -201,6 +208,7 @@ export const useAudioStore = create<AudioStore>()(
         description: state.selectedTopic,
         selected_topic: state.selectedTopic,
         selected_proefficent_level: state.selectedProficiencyLevel,
+        selected_conversation_type: state.selectedConversationType,
       });
     },
     disconnect: async () => {

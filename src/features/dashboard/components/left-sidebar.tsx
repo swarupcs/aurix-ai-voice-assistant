@@ -7,6 +7,7 @@ import {
   MessageSquare,
   Mic,
   Palette,
+  Briefcase,
 } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
@@ -27,9 +28,11 @@ import {
   AVAILABLE_VOICES,
   AVAILABLE_PROFICIENCY_LEVELS,
   AVAILABLE_TOPICS,
+  AVAILABLE_CONVERSATION_TYPES,
 } from '@/lib/constants';
 import SidebarHeaderComponent from '@/components/shared/sidebar-header';
 import { useAudioStore } from '@/features/voice-session/store/useAudioStore';
+import { ConnectionState } from '@/types';
 import { updateUserPreferences } from '@/server/actions/preferences';
 import {
   Sidebar,
@@ -47,12 +50,16 @@ function LeftSidebar() {
     selectedProficiencyLevel,
     selectedAssistantVoice,
     selectedTopic,
+    selectedConversationType,
+    conectionState,
     setSelectedLanguage,
     setSelectedProficiencyLevel,
     setSelectedAssistantvoice,
     setSelectedTopic,
+    setSelectedConversationType,
   } = useAudioStore();
-  const disabled = false;
+
+  const disabled = conectionState === ConnectionState.CONNECTED || conectionState === ConnectionState.CONNECTING;
 
   // Modern input style matching the clean aesthetic
   const triggerClass = cn(
@@ -79,6 +86,11 @@ function LeftSidebar() {
     await updateUserPreferences({ topic: val });
   };
 
+  const handleConversationTypeChange = async (val: string) => {
+    setSelectedConversationType(val);
+    await updateUserPreferences({ conversationType: val });
+  };
+
   const handleVoiceChange = async (val: string) => {
     setSelectedAssistantvoice(val);
     await updateUserPreferences({ voice: val });
@@ -100,6 +112,30 @@ function LeftSidebar() {
         </SidebarHeader>
 
         <SidebarContent className="px-5 py-6 space-y-8 custom-scrollbar">
+          <SidebarGroup className="p-0">
+            <SidebarGroupLabel className="flex items-center gap-2 font-bold text-[10px] uppercase tracking-[0.2em] text-muted-foreground/50 mb-3 px-0">
+              <Briefcase className="w-3.5 h-3.5 text-primary/40" /> Type
+            </SidebarGroupLabel>
+            <SidebarGroupContent>
+              <Select
+                value={selectedConversationType}
+                onValueChange={handleConversationTypeChange}
+                disabled={disabled}
+              >
+                <SelectTrigger className={triggerClass}>
+                  <SelectValue placeholder="Select type" />
+                </SelectTrigger>
+                <SelectContent className="rounded-xl shadow-xl border-white/10 backdrop-blur-xl bg-background/90">
+                  {AVAILABLE_CONVERSATION_TYPES.map((type) => (
+                    <SelectItem key={type} value={type} className="rounded-lg cursor-pointer my-1">
+                      <span className="text-sm font-medium">{type}</span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </SidebarGroupContent>
+          </SidebarGroup>
+
           <SidebarGroup className="p-0">
             <SidebarGroupLabel className="flex items-center gap-2 font-bold text-[10px] uppercase tracking-[0.2em] text-muted-foreground/50 mb-3 px-0">
               <Globe className="w-3.5 h-3.5 text-primary/40" /> Language

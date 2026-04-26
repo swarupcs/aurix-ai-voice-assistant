@@ -26,6 +26,7 @@ export async function updateUserPreferences(data: {
   topic?: string;
   voice?: string;
   proficiencyLevel?: string;
+  conversationType?: string;
 }) {
   const session = await auth();
   if (!session?.user?.id) throw new Error("Unauthorized");

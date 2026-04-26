@@ -69,6 +69,7 @@ model UserPreferences {
   topic            String @default("Casual Conversation")
   voice            String @default("Aoede")
   proficiencyLevel String @default("Intermediate")
+  conversationType String @default("Language Practice")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }

@@ -39,4 +39,5 @@ export interface ConnectConfig {
 
   selected_proefficent_level: string;
   selected_assistant_voice: string;
+  selected_conversation_type: string;
 }

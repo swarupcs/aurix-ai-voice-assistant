@@ -25,6 +25,7 @@ export interface LiveManagerCallbacks {
     isPartial: boolean,
   ) => void;
   onAudioLevel: (level: number, type: 'input' | 'output') => void;
+  onUserSpeaking: (isSpeaking: boolean) => void;
   onError: (error: string) => void;
 }
 

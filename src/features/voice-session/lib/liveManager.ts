@@ -28,11 +28,24 @@ export class LiveManager {
   // todo: explore where to use: hint - in session connect
   private isMuted: boolean = false;
   private audioLevelInterval: NodeJS.Timeout | null = null;
+  private vadInterval: NodeJS.Timeout | null = null;
   private outputAnalyser: AnalyserNode | null = null;
+  private inputAnalyser: AnalyserNode | null = null;
 
   private inputTranscription = '';
   private outputTranscription = '';
-  private audioQueue: Promise<void> = Promise.resolve();
+  private playbackGeneration = 0;
+  private localTranscriptionActive = false;
+  private recognition: any = null;
+  private isUserSpeaking = false;
+  private speechSilenceTimer: ReturnType<typeof setTimeout> | null = null;
+  private readonly SPEECH_THRESHOLD = 0.04;
+  private readonly SILENCE_DEBOUNCE_MS = 300;
+
+  // Local SpeechRecognition for instant user transcript preview
+  // Gemini's inputTranscription has server-side delay; this bridges the gap
+  private localInputText = '';
+  private geminiInputActive = false;
 
   constructor(callbacks: LiveManagerCallbacks, token: string) {
     this.ai = new GoogleGenAI({
@@ -108,21 +121,6 @@ export class LiveManager {
       this.outputNode.connect(this.outputAnalyser);
       this.outputAnalyser.connect(this.outputAudioContext.destination);
 
-      this.audioLevelInterval = setInterval(() => {
-        if (!this.outputAnalyser) return;
-        const dataArray = new Uint8Array(this.outputAnalyser.frequencyBinCount);
-        this.outputAnalyser.getByteFrequencyData(dataArray);
-        let sum = 0;
-        for (let i = 0; i < dataArray.length; i++) {
-          sum += dataArray[i];
-        }
-        const avg = sum / dataArray.length;
-        const normalized = Math.min(1, avg / 255);
-        if (this.callbacks.onAudioLevel) {
-          this.callbacks.onAudioLevel(normalized, 'output');
-        }
-      }, 50);
-
       await this.inputAudioContext.audioWorklet.addModule(
         `/worklets/mic-processor.js?v=${Date.now()}`
       );
@@ -156,7 +154,65 @@ export class LiveManager {
         this.mediaStream,
       );
 
-      this.inputSource.connect(this.workletNode);
+      // Set up input analyser for real-time user waveform
+      this.inputAnalyser = this.inputAudioContext.createAnalyser();
+      this.inputAnalyser.fftSize = 256;
+
+      this.inputSource.connect(this.inputAnalyser);
+      this.inputAnalyser.connect(this.workletNode);
+
+      // Start browser-native SpeechRecognition for instant transcript preview
+      // This gives word-by-word display while Gemini's server-side transcription catches up
+      this.startLocalTranscription(connectConfig.selected_launguage_code);
+
+      // Poll both input and output audio levels at ~30fps for smooth visualization
+      this.audioLevelInterval = setInterval(() => {
+        if (this.outputAnalyser) {
+          const dataArray = new Uint8Array(this.outputAnalyser.frequencyBinCount);
+          this.outputAnalyser.getByteFrequencyData(dataArray);
+          let sum = 0;
+          for (let i = 0; i < dataArray.length; i++) {
+            sum += dataArray[i];
+          }
+          const avg = sum / dataArray.length;
+          const normalized = Math.min(1, avg / 255);
+          this.callbacks.onAudioLevel(normalized, 'output');
+        }
+
+        if (this.inputAnalyser) {
+          const dataArray = new Uint8Array(this.inputAnalyser.frequencyBinCount);
+          this.inputAnalyser.getByteFrequencyData(dataArray);
+          let sum = 0;
+          for (let i = 0; i < dataArray.length; i++) {
+            sum += dataArray[i];
+          }
+          const avg = sum / dataArray.length;
+          const normalized = Math.min(1, avg / 255);
+          this.callbacks.onAudioLevel(normalized, 'input');
+
+          // Voice activity detection: detect when user starts/stops speaking
+          if (normalized > this.SPEECH_THRESHOLD) {
+            // Voice detected — clear any pending silence timer
+            if (this.speechSilenceTimer) {
+              clearTimeout(this.speechSilenceTimer);
+              this.speechSilenceTimer = null;
+            }
+            if (!this.isUserSpeaking) {
+              this.isUserSpeaking = true;
+              this.callbacks.onUserSpeaking(true);
+            }
+          } else if (this.isUserSpeaking) {
+            // Silence detected — debounce before marking as stopped
+            if (!this.speechSilenceTimer) {
+              this.speechSilenceTimer = setTimeout(() => {
+                this.isUserSpeaking = false;
+                this.callbacks.onUserSpeaking(false);
+                this.speechSilenceTimer = null;
+              }, this.SILENCE_DEBOUNCE_MS);
+            }
+          }
+        }
+      }, 33);
     } catch (e) {
       console.error(e);
       this.callbacks.onStateChange(ConnectionState.ERROR);
@@ -172,52 +228,160 @@ export class LiveManager {
     TOPIC: ${config.selected_topic}.
     USER LEVEL: ${config.selected_proefficent_level}.
 
-    INSTRUCTIONS:
-    1.  **Strictly** speak in ${config.selected_launguage_name}. Only use English if the user is completely stuck or asks for a translation.
-    2.  **Correction Mode**:
-        - If the user makes a grammar or pronunciation mistake, gently correct it *first*, then continue the conversation.
-        - Format: "Small tip: In ${config.selected_launguage_name} we say [Correction]. Anyway, [Response]?"
-    3.  **Conversation Flow**:
-        - Keep responses concise (1-3 sentences).
-        - Ask open-ended questions to keep the user talking.
+    CRITICAL INSTRUCTIONS:
+    1. The user will be speaking ${config.selected_launguage_name}. You MUST interpret all audio input as ${config.selected_launguage_name}, even if it sounds unclear. Never transcribe or respond in Telugu, Kannada, or other unrelated languages.
+    2. **Strictly** speak in ${config.selected_launguage_name}. Only use English if the user is completely stuck or asks for a translation.
+    3. **Correction Mode**: If the user makes a grammar or pronunciation mistake, gently correct it *first*, then continue the conversation. Format: "Small tip: In ${config.selected_launguage_name} we say [Correction]. Anyway, [Response]?"
+    4. **Conversation Flow**: Keep responses extremely concise (1-2 sentences maximum). Ask open-ended questions to keep the user talking.
     `;
+  }
+
+  /**
+   * Start browser-native SpeechRecognition for instant local transcript preview.
+   * This provides word-by-word display while the user speaks, before Gemini's
+   * server-side inputTranscription arrives (which has significant latency).
+   * Once Gemini's transcription starts arriving, it seamlessly takes over.
+   */
+  private recognitionLang = '';
+
+  private startLocalTranscription(languageCode: string) {
+    this.recognitionLang = languageCode;
+
+    const SpeechRecognitionAPI =
+      (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+
+    if (!SpeechRecognitionAPI) {
+      console.log('[LiveManager] SpeechRecognition not available — using Gemini-only transcription');
+      return;
+    }
+
+    // Stop any existing instance first
+    this.stopLocalTranscription();
+
+    this.recognition = new SpeechRecognitionAPI();
+    this.recognition.continuous = true;
+    this.recognition.interimResults = true;
+    this.recognition.lang = languageCode;
+    this.localTranscriptionActive = true;
+
+    this.recognition.onresult = (event: any) => {
+      // Once Gemini's transcription has arrived for this utterance, defer to it
+      if (this.geminiInputActive) return;
+
+      // Build the full text from all current results (final + interim)
+      let text = '';
+      for (let i = 0; i < event.results.length; i++) {
+        text += event.results[i][0].transcript;
+      }
+
+      if (text.trim()) {
+        this.localInputText = text;
+        // Show local preview immediately — user sees words as they speak
+        this.callbacks.onTranscript('user', this.localInputText, true);
+      }
+    };
+
+    this.recognition.onend = () => {
+      // Auto-restart if session is still active (SR stops after silence periods)
+      if (this.localTranscriptionActive && this.activeSession && !this.geminiInputActive) {
+        try {
+          this.recognition?.start();
+        } catch {}
+      }
+    };
+
+    this.recognition.onerror = (event: any) => {
+      // 'no-speech' fires constantly during silence — don't spam logs
+      if (event.error !== 'no-speech' && event.error !== 'aborted') {
+        console.log('[LiveManager] SpeechRecognition error:', event.error);
+      }
+    };
+
+    try {
+      this.recognition.start();
+      console.log('[LiveManager] 🎙️ Local SpeechRecognition started for instant preview');
+    } catch (e) {
+      console.log('[LiveManager] Failed to start SpeechRecognition:', e);
+    }
+  }
+
+  /** Stop local SR — call when Gemini takes over transcription */
+  private stopLocalTranscription() {
+    if (this.recognition) {
+      try {
+        this.recognition.onend = null; // Prevent auto-restart
+        this.recognition.stop();
+      } catch {}
+      this.recognition = null;
+    }
+  }
+
+  /** Restart local SR fresh — call when a turn completes so next utterance gets instant preview */
+  private restartLocalTranscription() {
+    if (this.recognitionLang && this.activeSession) {
+      this.startLocalTranscription(this.recognitionLang);
+    }
   }
 
   async handleMessage(message: LiveServerMessage) {
     const serverContent = message.serverContent;
 
     if (serverContent?.interrupted) {
+      console.log('[LiveManager] ⚡ INTERRUPTED');
       this.stopAllAudio();
-    }
-
-    const inputT = serverContent?.inputTranscription;
-    if (inputT) {
-      if (inputT.text) {
-        this.inputTranscription += inputT.text;
-      }
+      
+      // Crucial fix: If interrupted, we must seal the current transcript buffers 
+      // so the next sentence doesn't concatenate with the interrupted one.
       if (this.inputTranscription.trim()) {
-        this.callbacks.onTranscript('user', this.inputTranscription, !inputT.finished);
-        if (inputT.finished) {
-          this.inputTranscription = '';
-        }
-      }
-    }
-
-    const outputT = serverContent?.outputTranscription;
-    if (outputT) {
-      if (outputT.text) {
-        this.outputTranscription += outputT.text;
+        this.callbacks.onTranscript('user', this.inputTranscription, false);
+        this.inputTranscription = '';
       }
       if (this.outputTranscription.trim()) {
-        this.callbacks.onTranscript('model', this.outputTranscription, !outputT.finished);
-        if (outputT.finished) {
-          this.outputTranscription = '';
-        }
+        this.callbacks.onTranscript('model', this.outputTranscription, false);
+        this.outputTranscription = '';
       }
+      // Reset local preview + restart SR fresh for next utterance
+      this.geminiInputActive = false;
+      this.localInputText = '';
+      this.restartLocalTranscription();
     }
 
+    if (serverContent?.inputTranscription?.text) {
+      console.log('[LiveManager] 🎤 inputTranscription:', JSON.stringify(serverContent.inputTranscription.text));
+
+      // Gemini's server-side transcription has arrived — stop local SR to prevent duplicates
+      if (!this.geminiInputActive) {
+        this.geminiInputActive = true;
+        this.stopLocalTranscription();
+      }
+      this.inputTranscription += serverContent?.inputTranscription?.text;
+
+      this.callbacks.onTranscript('user', this.inputTranscription, true);
+    }
+
+    // Gemini can also send finished: true when a user turn naturally completes
+    if (serverContent?.inputTranscription?.finished) {
+      console.log('[LiveManager] 🎤 inputTranscription FINISHED');
+      if (this.inputTranscription.trim()) {
+        this.callbacks.onTranscript('user', this.inputTranscription, false);
+        this.inputTranscription = '';
+      }
+      // Reset + restart local SR fresh for next utterance
+      this.geminiInputActive = false;
+      this.localInputText = '';
+      this.restartLocalTranscription();
+    }
+
+    if (serverContent?.outputTranscription?.text) {
+      console.log('[LiveManager] 🤖 outputTranscription:', JSON.stringify(serverContent.outputTranscription.text));
+      this.outputTranscription += serverContent?.outputTranscription?.text;
+
+      this.callbacks.onTranscript('model', this.outputTranscription, true);
+    }
+
+    // Gemini turnComplete fires when the AI finishes responding
     if (serverContent?.turnComplete) {
-      // Safety fallback to commit partials if a turn strictly ends
+      console.log('[LiveManager] ✅ turnComplete');
       if (this.inputTranscription.trim()) {
         this.callbacks.onTranscript('user', this.inputTranscription, false);
         this.inputTranscription = '';
@@ -227,15 +391,28 @@ export class LiveManager {
         this.callbacks.onTranscript('model', this.outputTranscription, false);
         this.outputTranscription = '';
       }
+
+      // Reset + restart local SR fresh for next user utterance
+      this.geminiInputActive = false;
+      this.localInputText = '';
+      this.restartLocalTranscription();
     }
 
-    const base64Data = serverContent?.modelTurn?.parts?.[0].inlineData?.data;
+    // Log unhandled message types for debugging
+    if (serverContent && !serverContent.inputTranscription && !serverContent.outputTranscription 
+        && !serverContent.turnComplete && !serverContent.interrupted && !serverContent.modelTurn) {
+      console.log('[LiveManager] 📦 Unhandled serverContent keys:', Object.keys(serverContent));
+    }
 
-    if (!base64Data) return;
-
-    this.audioQueue = this.audioQueue.then(() =>
-      this.playAudioChunk(base64Data as string)
-    );
+    const parts = serverContent?.modelTurn?.parts;
+    if (parts) {
+      for (const part of parts) {
+        if (part.inlineData && part.inlineData.data) {
+          // Fire-and-forget: decode + schedule immediately, no serial queue
+          this.playAudioChunk(part.inlineData.data as string);
+        }
+      }
+    }
   }
 
   async playAudioChunk(audioData: string) {
@@ -243,42 +420,43 @@ export class LiveManager {
 
     if (!this.outputAudioContext || !this.outputNode) return;
 
-    // Decode audio data immediately without waiting in the queue
-    const audioBufferPromise = decodeAudioData(
+    const currentGeneration = this.playbackGeneration;
+
+    // Decode immediately — don't wait in any queue
+    const audioBuffer = await decodeAudioData(
       uintData,
       this.outputAudioContext,
       OUTPUT_SAMPLE_RATE,
       1,
     );
 
-    // Queue only the playback scheduling to ensure ordered output
-    this.audioQueue = this.audioQueue.then(async () => {
-      const audioBuffer = await audioBufferPromise;
+    // Skip if an interrupt occurred while we were decoding
+    if (currentGeneration !== this.playbackGeneration) return;
+    if (!this.outputAudioContext || !this.outputNode) return;
 
-      if (this.nextStartTime < this.outputAudioContext!.currentTime) {
-        this.nextStartTime = this.outputAudioContext!.currentTime;
-      }
+    // Ensure nextStartTime is never in the past
+    const now = this.outputAudioContext.currentTime;
+    if (this.nextStartTime < now) {
+      this.nextStartTime = now;
+    }
 
-      const source = this.outputAudioContext!.createBufferSource();
+    const source = this.outputAudioContext.createBufferSource();
+    source.buffer = audioBuffer;
+    source.connect(this.outputNode);
 
-      source.buffer = audioBuffer;
+    // Schedule at the precise next slot — Web Audio handles ordering
+    source.start(this.nextStartTime);
+    this.nextStartTime += audioBuffer.duration;
 
-      source.connect(this.outputNode!);
-
-      source.start(this.nextStartTime);
-
-      this.nextStartTime += audioBuffer.duration;
-
-      source.addEventListener('ended', () => {
-        this.sources.delete(source);
-      });
-
-      this.sources.add(source);
+    source.addEventListener('ended', () => {
+      this.sources.delete(source);
     });
+
+    this.sources.add(source);
   }
 
   async stopAllAudio() {
-    this.audioQueue = Promise.resolve();
+    this.playbackGeneration++;
 
     this.sources.forEach((source) => {
       try {
@@ -306,10 +484,37 @@ export class LiveManager {
   disconnect() {
     this.stopAllAudio();
 
+    // Reset transcript accumulation buffers to prevent stale state
+    this.inputTranscription = '';
+    this.outputTranscription = '';
+    this.localInputText = '';
+    this.geminiInputActive = false;
+
+    // Stop local SpeechRecognition
+    this.localTranscriptionActive = false;
+    if (this.recognition) {
+      try {
+        this.recognition.onend = null;
+        this.recognition.stop();
+      } catch (e) {}
+      this.recognition = null;
+    }
+
     if (this.audioLevelInterval) {
       clearInterval(this.audioLevelInterval);
       this.audioLevelInterval = null;
     }
+
+    if (this.vadInterval) {
+      clearInterval(this.vadInterval);
+      this.vadInterval = null;
+    }
+
+    if (this.speechSilenceTimer) {
+      clearTimeout(this.speechSilenceTimer);
+      this.speechSilenceTimer = null;
+    }
+    this.isUserSpeaking = false;
 
     if (this.activeSession) {
       this.activeSession.close();
@@ -317,6 +522,7 @@ export class LiveManager {
     }
 
     this.inputSource?.disconnect();
+    this.inputAnalyser?.disconnect();
     this.workletNode?.disconnect();
     this.inputAudioContext?.close();
     this.outputAudioContext?.close();

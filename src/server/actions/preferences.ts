@@ -8,11 +8,16 @@ export async function getUserPreferences() {
   const session = await auth();
   if (!session?.user?.id) return null;
 
-  const preferences = await prisma.userPreferences.findUnique({
-    where: { userId: session.user.id },
-  });
+  try {
+    const preferences = await prisma.userPreferences.findUnique({
+      where: { userId: session.user.id },
+    });
 
-  return preferences;
+    return preferences;
+  } catch (e) {
+    console.error('Failed to fetch user preferences (DB unreachable?):', e);
+    return null;
+  }
 }
 
 export async function updateUserPreferences(data: {

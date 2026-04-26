@@ -17,6 +17,8 @@ type AudioStore = {
   liveManagerInstance: LiveManager;
   transcript: TranscriptItem[];
   volume: number;
+  inputVolume: number;
+  isUserSpeaking: boolean;
 
   selectedLanguage: string;
   selectedProficiencyLevel: string;
@@ -47,6 +49,8 @@ export const useAudioStore = create<AudioStore>()(
     isMuted: false,
     transcript: [],
     volume: 0,
+    inputVolume: 0,
+    isUserSpeaking: false,
 
     selectedLanguage: AVAILABLE_LANGUAGES[0].code,
     selectedProficiencyLevel: AVAILABLE_PROFICIENCY_LEVELS[0].label,
@@ -128,41 +132,55 @@ export const useAudioStore = create<AudioStore>()(
             onStateChange: (state) => set({ conectionState: state }),
             onError: (err) => set({ error: err }),
             onTranscript: (sender, text, isPartial) => {
-              return set((state) => {
-                const newTranscript = [...state.transcript];
-                
-                if (!text.trim() && !isPartial) return { transcript: newTranscript };
-
-                // Look strictly for an active partial from this sender
-                const existingPartialIndex = newTranscript.findLastIndex(
-                  (item) => item.sender === sender && item.isPartial,
-                );
-
-                if (existingPartialIndex !== -1) {
-                  // We have an active partial sentence, update it
-                  newTranscript[existingPartialIndex] = {
-                    ...newTranscript[existingPartialIndex],
-                    text: text,
-                    isPartial,
-                  };
-                } else if (text.trim()) {
-                  // No active partial sentence, create a new one
-                  newTranscript.push({
-                    id: crypto.randomUUID(),
-                    sender,
-                    text: text,
-                    isPartial,
-                  });
+              set((state) => {
+                if (!text.trim() && !isPartial) {
+                  return state; // Ignore completely empty final dispatches
                 }
 
-                return { transcript: newTranscript };
+                const transcript = state.transcript;
+                const existingIndex = transcript.findLastIndex((item) => {
+                  return item.sender === sender && item.isPartial;
+                });
+
+                // Update existing partial — only clone the changed item
+                if (existingIndex !== -1) {
+                  const updated = [...transcript];
+                  updated[existingIndex] = {
+                    ...transcript[existingIndex],
+                    text,
+                    isPartial,
+                  };
+                  return { transcript: updated };
+                }
+
+                // New message — append only if non-empty
+                if (text.trim()) {
+                  return {
+                    transcript: [
+                      ...transcript,
+                      {
+                        id: crypto.randomUUID(),
+                        sender,
+                        text,
+                        isPartial,
+                      },
+                    ],
+                  };
+                }
+
+                return state;
               });
             },
             // implement this, animate when AI is talking.
             onAudioLevel: (level, type) => {
               if (type === 'output') {
                 set({ volume: level });
+              } else if (type === 'input') {
+                set({ inputVolume: level });
               }
+            },
+            onUserSpeaking: (isSpeaking) => {
+              set({ isUserSpeaking: isSpeaking });
             },
           },
           token.name,
@@ -210,6 +228,7 @@ export const useAudioStore = create<AudioStore>()(
         set({
           conectionState: ConnectionState.DISCONNECTED,
           transcript: [], // Clear after saving
+          isUserSpeaking: false,
         });
       }
     },

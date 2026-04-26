@@ -1,4 +1,8 @@
-export const MODEL = 'gemini-2.5-flash-native-audio-preview-09-2025';
+// Gemini 3.1 Flash Live — optimized for low-latency real-time dialogue (April 2026)
+// Fallback options if this model isn't available:
+//   'gemini-2.5-flash-native-audio-preview-12-2025' (Dec 2025 update)
+//   'gemini-2.5-flash-native-audio-preview-09-2025' (original, slowest)
+export const MODEL = 'gemini-3.1-flash-live-preview';
 export const INPUT_SAMPLE_RATE = 16000;
 export const OUTPUT_SAMPLE_RATE = 24000;
 

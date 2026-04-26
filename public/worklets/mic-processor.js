@@ -1,7 +1,7 @@
 class MicProcessor extends AudioWorkletProcessor {
   constructor() {
     super();
-    this.bufferSize = 4096; // 256ms of audio at 16kHz
+    this.bufferSize = 512; // 32ms of audio at 16kHz — low latency streaming
     this.buffer = new Float32Array(this.bufferSize);
     this.bufferIndex = 0;
   }

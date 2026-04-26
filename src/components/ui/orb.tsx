@@ -5,6 +5,41 @@ import { useTexture } from "@react-three/drei"
 import { Canvas, useFrame, useThree } from "@react-three/fiber"
 import * as THREE from "three"
 
+/**
+ * Resolve any CSS color value (including CSS variables like `var(--primary)`
+ * and modern color functions like `oklch()`) to a hex string that THREE.js
+ * can parse. Paints a 1x1 pixel and reads back raw RGBA to guarantee
+ * a proper hex color regardless of the input format.
+ */
+const _colorCanvas = typeof document !== "undefined"
+  ? (() => { const c = document.createElement("canvas"); c.width = 1; c.height = 1; return c; })()
+  : null
+
+function resolveCssColor(raw: string): string {
+  if (typeof document === "undefined" || !_colorCanvas) return "#CADCFC"
+
+  // If it's a CSS variable, resolve it first
+  let resolved = raw
+  const varMatch = raw.match(/^var\(--([^)]+)\)$/)
+  if (varMatch) {
+    resolved = getComputedStyle(document.documentElement)
+      .getPropertyValue(`--${varMatch[1]}`)
+      .trim()
+  }
+
+  // If it already looks like a hex color, return as-is
+  if (/^#[0-9a-fA-F]{3,8}$/.test(resolved)) return resolved
+
+  // Paint a pixel and read back the actual RGB bytes
+  const ctx = _colorCanvas.getContext("2d", { willReadFrequently: true })
+  if (!ctx) return "#CADCFC"
+  ctx.clearRect(0, 0, 1, 1)
+  ctx.fillStyle = resolved
+  ctx.fillRect(0, 0, 1, 1)
+  const [r, g, b] = ctx.getImageData(0, 0, 1, 1).data
+  return `#${r.toString(16).padStart(2, "0")}${g.toString(16).padStart(2, "0")}${b.toString(16).padStart(2, "0")}`
+}
+
 export type AgentState = null | "thinking" | "listening" | "talking"
 
 type OrbProps = {
@@ -105,6 +140,7 @@ function Scene({
   const manualOutRef = useRef<number>(manualOutput ?? 0)
   const curInRef = useRef(0)
   const curOutRef = useRef(0)
+  const lastLiveRef = useRef<[string, string]>(["", ""])
 
   useEffect(() => {
     agentRef.current = agentState
@@ -127,8 +163,8 @@ function Scene({
   }, [manualOutput, outputVolumeRef, getOutputVolume])
 
   const [initialSeed] = useState(() => Math.floor(Math.random() * 2 ** 32))
-  const [targetColor1] = useState(() => new THREE.Color(colors[0]))
-  const [targetColor2] = useState(() => new THREE.Color(colors[1]))
+  const [targetColor1] = useState(() => new THREE.Color(resolveCssColor(colors[0])))
+  const [targetColor2] = useState(() => new THREE.Color(resolveCssColor(colors[1])))
 
   const random = useMemo(
     () => splitmix32(seed ?? initialSeed),
@@ -141,8 +177,8 @@ function Scene({
   )
 
   useEffect(() => {
-    targetColor1.set(colors[0])
-    targetColor2.set(colors[1])
+    targetColor1.set(resolveCssColor(colors[0]))
+    targetColor2.set(resolveCssColor(colors[1]))
   }, [colors, targetColor1, targetColor2])
 
   useEffect(() => {
@@ -168,8 +204,14 @@ function Scene({
     if (!mat) return
     const live = colorsRef?.current
     if (live) {
-      if (live[0]) targetColor1.set(live[0])
-      if (live[1]) targetColor2.set(live[1])
+      if (live[0] && live[0] !== lastLiveRef.current[0]) {
+        lastLiveRef.current[0] = live[0]
+        targetColor1.set(resolveCssColor(live[0]))
+      }
+      if (live[1] && live[1] !== lastLiveRef.current[1]) {
+        lastLiveRef.current[1] = live[1]
+        targetColor2.set(resolveCssColor(live[1]))
+      }
     }
     const u = mat.uniforms
     
@@ -245,8 +287,8 @@ function Scene({
     texture.needsUpdate = true
 
     return {
-      uColor1: new THREE.Uniform(new THREE.Color(colors[0])),
-      uColor2: new THREE.Uniform(new THREE.Color(colors[1])),
+      uColor1: new THREE.Uniform(new THREE.Color(resolveCssColor(colors[0]))),
+      uColor2: new THREE.Uniform(new THREE.Color(resolveCssColor(colors[1]))),
       uOffsets: { value: offsets },
       uPerlinTexture: new THREE.Uniform(texture),
       uTime: new THREE.Uniform(0),

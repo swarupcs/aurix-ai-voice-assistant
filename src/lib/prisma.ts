@@ -6,19 +6,30 @@ import ws from 'ws';
 neonConfig.webSocketConstructor = ws;
 
 const prismaClientSingleton = () => {
-  // Use the standard PrismaClient in development/Node.js environments.
-  // The Neon adapter is primarily for Edge runtimes.
-  if (process.env.NODE_ENV !== "production") {
-    return new PrismaClient();
-  }
-
-  // In production (Edge), use the Neon serverless adapter
+  // Always retrieve the connection string from environment variables explicitly
   const connectionString = process.env.DATABASE_URL;
+
   if (!connectionString) {
-    throw new Error("DATABASE_URL is required in production");
+    // If it's truly missing, log loudly and clearly, instead of letting Neon fail silently with "localhost" defaults.
+    console.error("❌ CRITICAL: DATABASE_URL environment variable is NOT SET!");
+    throw new Error("DATABASE_URL is required but not set in the environment.");
   }
 
-  const pool = new Pool({ connectionString });
+  // Use the standard PrismaClient in development.
+  // We provide the connection string via the constructor just to be absolutely certain it's used.
+  if (process.env.NODE_ENV !== "production") {
+    return new PrismaClient({
+      datasources: {
+        db: {
+          url: connectionString,
+        },
+      },
+    });
+  }
+
+  // In production (Vercel Node.js/Edge), explicitly configure Neon pool with the connection string
+  // to prevent it from defaulting to localhost.
+  const pool = new Pool({ connectionString: connectionString });
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const adapter = new PrismaNeon(pool as any);
   return new PrismaClient({ adapter });

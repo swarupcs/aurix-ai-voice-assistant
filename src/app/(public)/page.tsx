@@ -51,10 +51,10 @@ export default function LandingPage() {
             </p>
             
             <div className="flex flex-col sm:flex-row gap-5 animate-in fade-in slide-in-from-bottom-8 duration-1000 delay-300">
-              <Button asChild size="xl" className="rounded-full h-16 px-10 text-lg font-bold shadow-2xl shadow-primary/20 hover:scale-105 active:scale-95 transition-all">
+              <Button asChild size="lg" className="rounded-full h-16 px-10 text-lg font-bold shadow-2xl shadow-primary/20 hover:scale-105 active:scale-95 transition-all">
                 <Link href="/login">Start Talking Now</Link>
               </Button>
-              <Button asChild variant="outline" size="xl" className="rounded-full h-16 px-10 text-lg font-bold bg-white/5 backdrop-blur-md border-white/10 hover:bg-white/10 hover:border-white/20 transition-all">
+              <Button asChild variant="outline" size="lg" className="rounded-full h-16 px-10 text-lg font-bold bg-white/5 backdrop-blur-md border-white/10 hover:bg-white/10 hover:border-white/20 transition-all">
                 <Link href="#features">Explore Technology</Link>
               </Button>
             </div>
@@ -119,7 +119,7 @@ export default function LandingPage() {
                     <p className="text-primary-foreground/80 text-xl md:text-2xl font-medium">
                        Join thousands of learners mastering languages through the power of AI voice interaction.
                     </p>
-                    <Button asChild size="xl" variant="secondary" className="rounded-full h-20 px-12 text-2xl font-black shadow-2xl hover:scale-110 transition-transform">
+                    <Button asChild size="lg" variant="secondary" className="rounded-full h-20 px-12 text-2xl font-black shadow-2xl hover:scale-110 transition-transform">
                        <Link href="/login">Get Started Now</Link>
                     </Button>
                  </div>

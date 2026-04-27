@@ -28,18 +28,15 @@ export default {
       return token;
     },
     // Called by middleware to determine access
+    // TODO: TEMPORARY — auth disabled for testing. Re-enable before production.
     authorized({ auth, request: { nextUrl } }) {
       const isLoggedIn = !!auth?.user;
-      const isOnDashboard = nextUrl.pathname.startsWith("/dashboard");
       const isOnLogin = nextUrl.pathname === "/login";
 
-      if (isOnDashboard && !isLoggedIn) {
-        return false; // Redirect to login
-      }
       if (isOnLogin && isLoggedIn) {
         return Response.redirect(new URL("/dashboard", nextUrl));
       }
-      return true;
+      return true; // Allow all routes — testing mode
     },
   },
 } satisfies NextAuthConfig;

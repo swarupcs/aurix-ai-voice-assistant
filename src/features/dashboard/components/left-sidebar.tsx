@@ -27,7 +27,8 @@ import {
   AVAILABLE_LANGUAGES,
   AVAILABLE_VOICES,
   AVAILABLE_PROFICIENCY_LEVELS,
-  AVAILABLE_TOPICS,
+  TOPICS_BY_TYPE,
+  VOICES_BY_TYPE,
   AVAILABLE_CONVERSATION_TYPES,
 } from '@/lib/constants';
 import SidebarHeaderComponent from '@/components/shared/sidebar-header';
@@ -88,7 +89,28 @@ function LeftSidebar() {
 
   const handleConversationTypeChange = async (val: string) => {
     setSelectedConversationType(val);
-    await updateUserPreferences({ conversationType: val });
+    
+    // Auto-update topic if current is invalid
+    let newTopic = selectedTopic;
+    const validTopics = TOPICS_BY_TYPE[val] || [];
+    if (!validTopics.includes(selectedTopic) && validTopics.length > 0) {
+      newTopic = validTopics[0];
+      setSelectedTopic(newTopic);
+    }
+    
+    // Auto-update voice if current is invalid
+    let newVoice = selectedAssistantVoice;
+    const validVoices = VOICES_BY_TYPE[val] || [];
+    if (!validVoices.includes(selectedAssistantVoice) && validVoices.length > 0) {
+      newVoice = validVoices[0];
+      setSelectedAssistantvoice(newVoice);
+    }
+    
+    await updateUserPreferences({ 
+      conversationType: val,
+      topic: newTopic,
+      voice: newVoice
+    });
   };
 
   const handleVoiceChange = async (val: string) => {
@@ -112,137 +134,165 @@ function LeftSidebar() {
         </SidebarHeader>
 
         <SidebarContent className="px-5 py-6 space-y-8 custom-scrollbar">
-          <SidebarGroup className="p-0">
-            <SidebarGroupLabel className="flex items-center gap-2 font-bold text-[10px] uppercase tracking-[0.2em] text-muted-foreground/50 mb-3 px-0">
-              <Briefcase className="w-3.5 h-3.5 text-primary/40" /> Type
-            </SidebarGroupLabel>
-            <SidebarGroupContent>
-              <Select
-                value={selectedConversationType}
-                onValueChange={handleConversationTypeChange}
-                disabled={disabled}
-              >
-                <SelectTrigger className={triggerClass}>
-                  <SelectValue placeholder="Select type" />
-                </SelectTrigger>
-                <SelectContent className="rounded-xl shadow-xl border-white/10 backdrop-blur-xl bg-background/90">
-                  {AVAILABLE_CONVERSATION_TYPES.map((type) => (
-                    <SelectItem key={type} value={type} className="rounded-lg cursor-pointer my-1">
-                      <span className="text-sm font-medium">{type}</span>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </SidebarGroupContent>
-          </SidebarGroup>
-
-          <SidebarGroup className="p-0">
-            <SidebarGroupLabel className="flex items-center gap-2 font-bold text-[10px] uppercase tracking-[0.2em] text-muted-foreground/50 mb-3 px-0">
-              <Globe className="w-3.5 h-3.5 text-primary/40" /> Language
-            </SidebarGroupLabel>
-            <SidebarGroupContent>
-              <Select
-                value={selectedLanguage}
-                onValueChange={handleLanguageChange}
-                disabled={disabled}
-              >
-                <SelectTrigger className={triggerClass}>
-                  <SelectValue placeholder="Select language" />
-                </SelectTrigger>
-                <SelectContent className="rounded-xl shadow-xl border-white/10 backdrop-blur-xl bg-background/90">
-                  <SelectGroup>
-                    {AVAILABLE_LANGUAGES.map((lang) => (
-                      <SelectItem key={lang.id} value={lang.code} className="rounded-lg cursor-pointer my-1">
-                        <div className="flex w-full items-center justify-between gap-3">
-                          <span className="text-sm font-medium truncate">{lang.name}</span>
-                          <span className="text-[10px] uppercase font-bold text-muted-foreground truncate opacity-80 bg-muted/50 px-2 py-0.5 rounded-md">
-                            {lang.region}
-                          </span>
-                        </div>
+          
+          {/* SECTION 1: Primary Goal */}
+          <div className="space-y-4">
+            <h3 className="text-[10px] uppercase tracking-[0.2em] font-bold text-muted-foreground/70 pl-1">Primary Goal</h3>
+            <SidebarGroup className="p-4 bg-primary/5 rounded-2xl border border-primary/10 shadow-inner">
+              <SidebarGroupLabel className="flex items-center gap-2 font-bold text-[11px] uppercase tracking-widest text-primary/80 mb-3 px-0">
+                <Briefcase className="w-4 h-4" /> Conversation Type
+              </SidebarGroupLabel>
+              <SidebarGroupContent>
+                <Select
+                  value={selectedConversationType}
+                  onValueChange={handleConversationTypeChange}
+                  disabled={disabled}
+                >
+                  <SelectTrigger className={cn(triggerClass, "bg-background border-primary/20 shadow-sm")}>
+                    <SelectValue placeholder="Select type" />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-xl shadow-xl border-white/10 backdrop-blur-xl bg-background/90">
+                    {AVAILABLE_CONVERSATION_TYPES.map((type) => (
+                      <SelectItem key={type} value={type} className="rounded-lg cursor-pointer my-1">
+                        <span className="text-sm font-medium">{type}</span>
                       </SelectItem>
                     ))}
-                  </SelectGroup>
-                </SelectContent>
-              </Select>
-            </SidebarGroupContent>
-          </SidebarGroup>
+                  </SelectContent>
+                </Select>
+                <p className="text-[10px] text-muted-foreground mt-3 leading-relaxed">
+                  Select the AI's core behavior for this session.
+                </p>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          </div>
 
-          <SidebarGroup>
-            <SidebarGroupLabel className="flex items-center gap-2 font-bold text-[11px] uppercase tracking-widest text-muted-foreground/70 mb-3">
-              <GraduationCap className="w-4 h-4 text-primary/70" /> Skill Level
-            </SidebarGroupLabel>
-            <SidebarGroupContent>
-              <Select
-                value={selectedProficiencyLevel}
-                onValueChange={handleProficiencyChange}
-                disabled={disabled}
-              >
-                <SelectTrigger className={triggerClass}>
-                  <SelectValue placeholder="Select level" />
-                </SelectTrigger>
-                <SelectContent className="rounded-xl shadow-xl border-white/10 backdrop-blur-xl bg-background/90">
-                  {AVAILABLE_PROFICIENCY_LEVELS.map((level) => (
-                    <SelectItem key={level.id} value={level.label} className="rounded-lg cursor-pointer my-1">
-                      <span className="text-sm font-medium">{level.label}</span>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </SidebarGroupContent>
-          </SidebarGroup>
+          {/* SECTION 2: Language Setup */}
+          <div className="space-y-4">
+            <h3 className="text-[10px] uppercase tracking-[0.2em] font-bold text-muted-foreground/70 pl-1">Language Setup</h3>
+            <div className="p-4 bg-background/40 rounded-2xl border border-white/5 space-y-5">
+              <SidebarGroup className="p-0">
+                <SidebarGroupLabel className="flex items-center gap-2 font-bold text-[11px] uppercase tracking-widest text-muted-foreground/80 mb-3 px-0">
+                  <Globe className="w-4 h-4 text-blue-400" /> Language
+                </SidebarGroupLabel>
+                <SidebarGroupContent>
+                  <Select
+                    value={selectedLanguage}
+                    onValueChange={handleLanguageChange}
+                    disabled={disabled}
+                  >
+                    <SelectTrigger className={triggerClass}>
+                      <SelectValue placeholder="Select language" />
+                    </SelectTrigger>
+                    <SelectContent className="rounded-xl shadow-xl border-white/10 backdrop-blur-xl bg-background/90">
+                      <SelectGroup>
+                        {AVAILABLE_LANGUAGES.map((lang) => (
+                          <SelectItem key={lang.id} value={lang.code} className="rounded-lg cursor-pointer my-1">
+                            <div className="flex w-full items-center justify-between gap-3">
+                              <span className="text-sm font-medium truncate">{lang.name}</span>
+                              <span className="text-[10px] uppercase font-bold text-muted-foreground truncate opacity-80 bg-muted/50 px-2 py-0.5 rounded-md">
+                                {lang.region}
+                              </span>
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectGroup>
+                    </SelectContent>
+                  </Select>
+                </SidebarGroupContent>
+              </SidebarGroup>
 
-          <SidebarGroup>
-            <SidebarGroupLabel className="flex items-center gap-2 font-bold text-[11px] uppercase tracking-widest text-muted-foreground/70 mb-3">
-              <MessageSquare className="w-4 h-4 text-primary/70" /> Conversation Topic
-            </SidebarGroupLabel>
-            <SidebarGroupContent>
-              <Select
-                value={selectedTopic}
-                onValueChange={handleTopicChange}
-                disabled={disabled}
-              >
-                <SelectTrigger className={triggerClass}>
-                  <SelectValue placeholder="Select topic" />
-                </SelectTrigger>
-                <SelectContent className="rounded-xl shadow-xl border-white/10 backdrop-blur-xl bg-background/90">
-                  {AVAILABLE_TOPICS.map((topic) => (
-                    <SelectItem key={topic} value={topic} className="rounded-lg cursor-pointer my-1">
-                      <span className="text-sm font-medium">{topic}</span>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </SidebarGroupContent>
-          </SidebarGroup>
+              {/* Conditional Rendering: Skill Level is only relevant for Language Practice */}
+              {selectedConversationType === 'Language Practice' && (
+                <SidebarGroup className="p-0 border-t border-white/5 pt-5">
+                  <SidebarGroupLabel className="flex items-center gap-2 font-bold text-[11px] uppercase tracking-widest text-muted-foreground/80 mb-3 px-0">
+                    <GraduationCap className="w-4 h-4 text-emerald-400" /> Skill Level
+                  </SidebarGroupLabel>
+                  <SidebarGroupContent>
+                    <Select
+                      value={selectedProficiencyLevel}
+                      onValueChange={handleProficiencyChange}
+                      disabled={disabled}
+                    >
+                      <SelectTrigger className={triggerClass}>
+                        <SelectValue placeholder="Select level" />
+                      </SelectTrigger>
+                      <SelectContent className="rounded-xl shadow-xl border-white/10 backdrop-blur-xl bg-background/90">
+                        {AVAILABLE_PROFICIENCY_LEVELS.map((level) => (
+                          <SelectItem key={level.id} value={level.label} className="rounded-lg cursor-pointer my-1">
+                            <span className="text-sm font-medium">{level.label}</span>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </SidebarGroupContent>
+                </SidebarGroup>
+              )}
+            </div>
+          </div>
 
-          <SidebarGroup>
-            <SidebarGroupLabel className="flex items-center gap-2 font-bold text-[11px] uppercase tracking-widest text-muted-foreground/70 mb-3">
-              <Mic className="w-4 h-4 text-primary/70" /> AI Voice Persona
-            </SidebarGroupLabel>
-            <SidebarGroupContent>
-              <Select
-                value={selectedAssistantVoice}
-                onValueChange={handleVoiceChange}
-                disabled={disabled}
-              >
-                <SelectTrigger className={triggerClass}>
-                  <SelectValue placeholder="Select voice" />
-                </SelectTrigger>
-                <SelectContent className="rounded-xl shadow-xl border-white/10 backdrop-blur-xl bg-background/90">
-                  {AVAILABLE_VOICES.map((voice) => (
-                    <SelectItem key={voice.id} value={voice.name} className="rounded-lg cursor-pointer my-1">
-                      <div className="flex items-center justify-between w-full gap-4">
-                        <span className="font-medium">{voice.name}</span>
-                        <span className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground bg-muted/50 px-2 py-0.5 rounded-md">
-                          {voice.category}
-                        </span>
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </SidebarGroupContent>
-          </SidebarGroup>
+          {/* SECTION 3: Context & Persona */}
+          <div className="space-y-4">
+            <h3 className="text-[10px] uppercase tracking-[0.2em] font-bold text-muted-foreground/70 pl-1">Context & Persona</h3>
+            <div className="p-4 bg-background/40 rounded-2xl border border-white/5 space-y-5">
+              <SidebarGroup className="p-0">
+                <SidebarGroupLabel className="flex items-center gap-2 font-bold text-[11px] uppercase tracking-widest text-muted-foreground/80 mb-3 px-0">
+                  <MessageSquare className="w-4 h-4 text-purple-400" /> 
+                  {selectedConversationType === 'Interview Prep' ? 'Interview Subject' : 
+                   selectedConversationType === 'Roleplay' ? 'Scenario' : 'Topic'}
+                </SidebarGroupLabel>
+                <SidebarGroupContent>
+                  <Select
+                    value={selectedTopic}
+                    onValueChange={handleTopicChange}
+                    disabled={disabled}
+                  >
+                    <SelectTrigger className={triggerClass}>
+                      <SelectValue placeholder="Select topic" />
+                    </SelectTrigger>
+                    <SelectContent className="rounded-xl shadow-xl border-white/10 backdrop-blur-xl bg-background/90">
+                      {(TOPICS_BY_TYPE[selectedConversationType] || []).map((topic) => (
+                        <SelectItem key={topic} value={topic} className="rounded-lg cursor-pointer my-1">
+                          <span className="text-sm font-medium">{topic}</span>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </SidebarGroupContent>
+              </SidebarGroup>
+
+              <SidebarGroup className="p-0 border-t border-white/5 pt-5">
+                <SidebarGroupLabel className="flex items-center gap-2 font-bold text-[11px] uppercase tracking-widest text-muted-foreground/80 mb-3 px-0">
+                  <Mic className="w-4 h-4 text-rose-400" /> AI Voice
+                </SidebarGroupLabel>
+                <SidebarGroupContent>
+                  <Select
+                    value={selectedAssistantVoice}
+                    onValueChange={handleVoiceChange}
+                    disabled={disabled}
+                  >
+                    <SelectTrigger className={triggerClass}>
+                      <SelectValue placeholder="Select voice" />
+                    </SelectTrigger>
+                    <SelectContent className="rounded-xl shadow-xl border-white/10 backdrop-blur-xl bg-background/90">
+                      {AVAILABLE_VOICES
+                        .filter(voice => (VOICES_BY_TYPE[selectedConversationType] || []).includes(voice.name))
+                        .map((voice) => (
+                        <SelectItem key={voice.id} value={voice.name} className="rounded-lg cursor-pointer my-1">
+                          <div className="flex items-center justify-between w-full gap-4">
+                            <span className="font-medium">{voice.name}</span>
+                            <span className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground bg-muted/50 px-2 py-0.5 rounded-md">
+                              {voice.category}
+                            </span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </SidebarGroupContent>
+              </SidebarGroup>
+            </div>
+          </div>
+
         </SidebarContent>
 
         <SidebarFooter className="border-t border-border/10 p-5 bg-background/30 backdrop-blur-md">

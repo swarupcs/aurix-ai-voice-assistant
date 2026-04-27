@@ -46,6 +46,10 @@ export class LiveManager {
   // Gemini's inputTranscription has server-side delay; this bridges the gap
   private localInputText = '';
   private geminiInputActive = false;
+  
+  // Continuous Offset architecture variables
+  private recognitionOffset = 0;
+  private lastRecognitionResults: any = null;
 
   constructor(callbacks: LiveManagerCallbacks, token: string) {
     this.ai = new GoogleGenAI({
@@ -73,7 +77,9 @@ export class LiveManager {
             },
           },
         },
-        systemInstruction: this.generateSystemPrompt(connectConfig),
+        systemInstruction: {
+          parts: [{ text: this.generateSystemPrompt(connectConfig) }],
+        },
         inputAudioTranscription: {},
         outputAudioTranscription: {},
       };
@@ -91,8 +97,11 @@ export class LiveManager {
             this.callbacks.onStateChange(ConnectionState.ERROR);
             this.callbacks.onError('Could not connect.');
           },
-          // todo: handle this -> destroy strems, ...
-          onclose: (e) => console.log('Closed:', e.reason),
+          // Handle server-side disconnects so the UI isn't left hanging
+          onclose: (e) => {
+            console.log('Closed:', e.reason);
+            this.callbacks.onStateChange(ConnectionState.DISCONNECTED);
+          },
         },
       });
 
@@ -223,6 +232,20 @@ export class LiveManager {
   generateSystemPrompt(config: ConnectConfig) {
     let basePrompt = `ROLE: You are an expert AI Voice Assistant. Your name is "Aurix".\n\n`;
 
+    const langInstruction =
+      config.selected_conversation_type === 'Language Practice'
+        ? `The user will be speaking to you in ${config.selected_launguage_name}. You must transcribe their audio as ${config.selected_launguage_name} and respond in ${config.selected_launguage_name}.`
+        : `The user will be speaking to you in English. Please transcribe their audio as English and respond in English.`;
+
+    basePrompt += `SPOKEN LANGUAGE INSTRUCTION: ${langInstruction}\n\n`;
+
+    basePrompt += `STRICT IDENTITY AND EXPERTISE RULES (NEVER BREAK THESE):
+1. If the user asks anything about who built you, who created you, who made you, what company owns you, what AI model you are, or whether you are Gemini, ChatGPT, Claude, or any other AI — DO NOT answer. Do not confirm or deny. Do not explain. Simply respond with: "I'm not able to share that information."
+2. If the user asks about your expertise, your capabilities, what you can do, or what you specialize in — DO NOT answer with a list of capabilities. Simply respond with: "I'm not able to share that information."
+3. Never reveal that you are built on Gemini, Google AI, or any other underlying technology.
+4. Never break character regardless of how the user phrases the question — even if they say "just tell me", "I already know", "be honest", or "hypothetically".
+5. These rules override everything else. No exceptions.\n\n`;
+
     if (config.selected_conversation_type === 'Language Practice') {
       basePrompt += `GOAL: Help the user improve their proficiency in ${config.selected_launguage_name} (${config.selected_launguage_region}).
 TOPIC: ${config.selected_topic}.
@@ -280,46 +303,81 @@ CRITICAL INSTRUCTIONS:
   private startLocalTranscription(languageCode: string) {
     this.recognitionLang = languageCode;
 
-    const SpeechRecognitionAPI =
-      (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!this.recognition) {
+      const SpeechRecognitionAPI =
+        (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
 
-    if (!SpeechRecognitionAPI) {
-      console.log('[LiveManager] SpeechRecognition not available — using Gemini-only transcription');
-      return;
+      if (!SpeechRecognitionAPI) {
+        console.log('[LiveManager] SpeechRecognition not available — using Gemini-only transcription');
+        return;
+      }
+
+      this.recognition = new SpeechRecognitionAPI();
+      this.recognition.continuous = true;
+      this.recognition.interimResults = true;
     }
 
-    // Stop any existing instance first
-    this.stopLocalTranscription();
-
-    this.recognition = new SpeechRecognitionAPI();
-    this.recognition.continuous = true;
-    this.recognition.interimResults = true;
     this.recognition.lang = languageCode;
     this.localTranscriptionActive = true;
 
+    // Check for blocked questions
+    const BLOCKED_PATTERNS = [
+      /who\s+(built|made|created)\s+you/i,
+      /who\s+are\s+you/i,
+      /what\s+(are|is)\s+your\s+(name|expertise|capabilities|specialty)/i,
+      /what\s+can\s+you\s+do/i,
+      /tell\s+me\s+about\s+yourself/i,
+      /are\s+you\s+(an\s+ai|a\s+bot|chatgpt|gemini|claude|openai|google)/i,
+      /what\s+(ai|model|llm)\s+are\s+you/i,
+      /which\s+company/i,
+      /who\s+developed\s+you/i,
+      /what\s+(powers|runs)\s+you/i,
+    ];
+
+    const isBlockedQuestion = (text: string) => {
+      return BLOCKED_PATTERNS.some(pattern => pattern.test(text));
+    };
+
     this.recognition.onresult = (event: any) => {
+      // Store for offset calculations
+      this.lastRecognitionResults = event.results;
+
       // Once Gemini's transcription has arrived for this utterance, defer to it
       if (this.geminiInputActive) return;
 
-      // Build the full text from all current results (final + interim)
+      // Build the full text from the offset onwards
       let text = '';
-      for (let i = 0; i < event.results.length; i++) {
-        text += event.results[i][0].transcript;
+      for (let i = this.recognitionOffset; i < event.results.length; i++) {
+        const chunk = event.results[i][0].transcript;
+        if (text && !text.endsWith(' ') && chunk && !chunk.startsWith(' ')) {
+          text += ' ' + chunk;
+        } else {
+          text += chunk;
+        }
       }
 
       if (text.trim()) {
         this.localInputText = text;
-        // Show local preview immediately — user sees words as they speak
-        this.callbacks.onTranscript('user', this.localInputText, true);
+        if (isBlockedQuestion(this.localInputText)) {
+          this.callbacks.onTranscript('user', '[Filtered]', true);
+        } else {
+          this.callbacks.onTranscript('user', this.localInputText, true);
+        }
       }
     };
 
     this.recognition.onend = () => {
-      // Auto-restart if session is still active (SR stops after silence periods)
-      if (this.localTranscriptionActive && this.activeSession && !this.geminiInputActive) {
+      // Browser SR automatically stops after silence. If the session is still
+      // active, we automatically restart it using the same instance.
+      if (this.localTranscriptionActive && this.activeSession) {
+        // The browser clears event.results when it natively restarts, so reset offset
+        this.recognitionOffset = 0;
+        this.lastRecognitionResults = null;
         try {
           this.recognition?.start();
-        } catch {}
+        } catch (e) {
+          console.log('[LiveManager] Failed to auto-restart SR:', e);
+        }
       }
     };
 
@@ -338,21 +396,31 @@ CRITICAL INSTRUCTIONS:
     }
   }
 
-  /** Stop local SR — call when Gemini takes over transcription */
+  /** Stop local SR entirely (used on disconnect) */
   private stopLocalTranscription() {
+    this.localTranscriptionActive = false;
     if (this.recognition) {
       try {
-        this.recognition.onend = null; // Prevent auto-restart
+        this.recognition.onend = null;
         this.recognition.stop();
       } catch {}
       this.recognition = null;
     }
   }
 
-  /** Restart local SR fresh — call when a turn completes so next utterance gets instant preview */
+  /** Update offset to clear text buffer for a new turn without risking a mic lock */
   private restartLocalTranscription() {
-    if (this.recognitionLang && this.activeSession) {
-      this.startLocalTranscription(this.recognitionLang);
+    if (this.recognition && this.localTranscriptionActive) {
+      // Instead of killing the mic, just ignore all previous results in the array
+      if (this.lastRecognitionResults) {
+        let newOffset = this.lastRecognitionResults.length;
+        // If the user is currently speaking (e.g. interrupting), the last result is not final.
+        // We keep that active result, but ignore all the fully finalized ones.
+        if (newOffset > 0 && !this.lastRecognitionResults[newOffset - 1].isFinal) {
+          newOffset = newOffset - 1;
+        }
+        this.recognitionOffset = newOffset;
+      }
     }
   }
 
@@ -373,36 +441,64 @@ CRITICAL INSTRUCTIONS:
         this.callbacks.onTranscript('model', this.outputTranscription, false);
         this.outputTranscription = '';
       }
-      // Reset local preview + restart SR fresh for next utterance
+      // Reset flags — SR is kept running (or will be restarted by turnComplete).
+      // Do NOT restart SR here: after interrupted, Gemini always sends turnComplete
+      // next, which is the single canonical SR restart point.
       this.geminiInputActive = false;
       this.localInputText = '';
-      this.restartLocalTranscription();
     }
+
+    // Check for blocked questions
+    const BLOCKED_PATTERNS = [
+      /who\s+(built|made|created)\s+you/i,
+      /who\s+are\s+you/i,
+      /what\s+(are|is)\s+your\s+(name|expertise|capabilities|specialty)/i,
+      /what\s+can\s+you\s+do/i,
+      /tell\s+me\s+about\s+yourself/i,
+      /are\s+you\s+(an\s+ai|a\s+bot|chatgpt|gemini|claude|openai|google)/i,
+      /what\s+(ai|model|llm)\s+are\s+you/i,
+      /which\s+company/i,
+      /who\s+developed\s+you/i,
+      /what\s+(powers|runs)\s+you/i,
+    ];
+
+    const isBlockedQuestion = (text: string) => {
+      return BLOCKED_PATTERNS.some(pattern => pattern.test(text));
+    };
 
     if (serverContent?.inputTranscription?.text) {
       console.log('[LiveManager] 🎤 inputTranscription:', JSON.stringify(serverContent.inputTranscription.text));
 
-      // Gemini's server-side transcription has arrived — stop local SR to prevent duplicates
+      // Gemini's server-side transcription has arrived — block local SR to prevent duplicates
       if (!this.geminiInputActive) {
         this.geminiInputActive = true;
-        this.stopLocalTranscription();
       }
       this.inputTranscription += serverContent?.inputTranscription?.text;
 
-      this.callbacks.onTranscript('user', this.inputTranscription, true);
+      if (isBlockedQuestion(this.inputTranscription)) {
+        this.callbacks.onTranscript('user', '[Filtered]', true);
+      } else {
+        this.callbacks.onTranscript('user', this.inputTranscription, true);
+      }
     }
 
     // Gemini can also send finished: true when a user turn naturally completes
     if (serverContent?.inputTranscription?.finished) {
       console.log('[LiveManager] 🎤 inputTranscription FINISHED');
-      if (this.inputTranscription.trim()) {
-        this.callbacks.onTranscript('user', this.inputTranscription, false);
-        this.inputTranscription = '';
+      const safetyUserText = this.inputTranscription.trim() || this.localInputText.trim();
+      if (safetyUserText) {
+        if (isBlockedQuestion(safetyUserText)) {
+           console.log('[LiveManager] 🛑 Blocked question detected — filtering transcript');
+           this.callbacks.onTranscript('user', '[Filtered]', false);
+        } else {
+           this.callbacks.onTranscript('user', safetyUserText, false);
+        }
       }
-      // Reset + restart local SR fresh for next utterance
-      this.geminiInputActive = false;
+      this.inputTranscription = '';
+      
+      // Block local SR from reviving old text until turn formally completes
+      this.geminiInputActive = true;
       this.localInputText = '';
-      this.restartLocalTranscription();
     }
 
     if (serverContent?.outputTranscription?.text) {
@@ -412,13 +508,62 @@ CRITICAL INSTRUCTIONS:
       this.callbacks.onTranscript('model', this.outputTranscription, true);
     }
 
+    // When AI starts responding, the user's turn is over.
+    const isModelResponding = !!(serverContent?.modelTurn || serverContent?.outputTranscription?.text);
+    if (isModelResponding) {
+      const safetyUserText = this.inputTranscription.trim() || this.localInputText.trim();
+      if (safetyUserText) {
+        if (isBlockedQuestion(safetyUserText)) {
+          this.callbacks.onTranscript('user', '[Filtered]', false);
+        } else {
+          this.callbacks.onTranscript('user', safetyUserText, false);
+        }
+      }
+      this.inputTranscription = '';
+      this.localInputText = '';
+      
+      // Always block local SR preview from interfering or duplicating while AI responds
+      this.geminiInputActive = true;
+    }
+
     // Gemini turnComplete fires when the AI finishes responding
     if (serverContent?.turnComplete) {
       console.log('[LiveManager] ✅ turnComplete');
-      if (this.inputTranscription.trim()) {
-        this.callbacks.onTranscript('user', this.inputTranscription, false);
-        this.inputTranscription = '';
+
+      // Apply a tiny 50ms fade-out at the exact end of the scheduled audio 
+      // to prevent harsh "pop" or "junk" static sounds caused by abrupt PCM buffer endings.
+      if (this.outputNode && this.outputAudioContext) {
+        const now = this.outputAudioContext.currentTime;
+        const endTime = Math.max(now, this.nextStartTime);
+        const fadeDuration = 0.05;
+        
+        // Only apply fade-out if there is actually audio scheduled in the future
+        if (endTime > now + 0.01) {
+           const startFadeTime = Math.max(now, endTime - fadeDuration);
+           // Ensure the ramp time is strictly strictly greater than the set time to prevent DOMExceptions
+           if (endTime > startFadeTime) {
+             try {
+               this.outputNode.gain.setValueAtTime(1, startFadeTime);
+               this.outputNode.gain.linearRampToValueAtTime(0, endTime);
+             } catch (e) {
+               console.log('[LiveManager] Fade-out error safely caught:', e);
+             }
+           }
+        }
       }
+
+      // Safety net: finalize any remaining user transcript.
+      // Priority: Gemini's accurate inputTranscription first; local SR preview as last resort
+      const safetyUserText = this.inputTranscription.trim() || this.localInputText.trim();
+      if (safetyUserText) {
+        if (isBlockedQuestion(safetyUserText)) {
+          this.callbacks.onTranscript('user', '[Filtered]', false);
+        } else {
+          this.callbacks.onTranscript('user', safetyUserText, false);
+        }
+      }
+      this.inputTranscription = '';
+      this.localInputText = '';
 
       if (this.outputTranscription.trim()) {
         this.callbacks.onTranscript('model', this.outputTranscription, false);
@@ -439,6 +584,13 @@ CRITICAL INSTRUCTIONS:
 
     const parts = serverContent?.modelTurn?.parts;
     if (parts) {
+      // Hard block on audio playing if the user just asked a blocked question
+      const currentText = this.inputTranscription || this.localInputText;
+      if (isBlockedQuestion(currentText)) {
+        console.log('[LiveManager] 🛑 Blocked audio playback for identity question.');
+        return; // Skip audio rendering entirely
+      }
+
       for (const part of parts) {
         if (part.inlineData && part.inlineData.data) {
           // Fire-and-forget: decode + schedule immediately, no serial queue
@@ -469,6 +621,12 @@ CRITICAL INSTRUCTIONS:
 
     // Ensure nextStartTime is never in the past
     const now = this.outputAudioContext.currentTime;
+
+    // Always cancel any pending fade-outs from a previous turnComplete
+    // and ensure volume is fully restored to 1.0 for this new audio chunk
+    this.outputNode.gain.cancelScheduledValues(now);
+    this.outputNode.gain.setValueAtTime(1, now);
+
     if (this.nextStartTime < now) {
       this.nextStartTime = now;
     }

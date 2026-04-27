@@ -1,7 +1,7 @@
 import {
   AVAILABLE_LANGUAGES,
   AVAILABLE_PROFICIENCY_LEVELS,
-  AVAILABLE_TOPICS,
+  TOPICS_BY_TYPE,
   AVAILABLE_VOICES,
   AVAILABLE_CONVERSATION_TYPES,
 } from '@/lib/constants';
@@ -57,7 +57,7 @@ export const useAudioStore = create<AudioStore>()(
 
     selectedLanguage: AVAILABLE_LANGUAGES[0].code,
     selectedProficiencyLevel: AVAILABLE_PROFICIENCY_LEVELS[0].label,
-    selectedTopic: AVAILABLE_TOPICS[0],
+    selectedTopic: TOPICS_BY_TYPE[AVAILABLE_CONVERSATION_TYPES[0]][0],
     selectedAssistantVoice: AVAILABLE_VOICES[0].name,
     selectedConversationType: AVAILABLE_CONVERSATION_TYPES[0],
 

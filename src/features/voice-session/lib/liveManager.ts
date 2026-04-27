@@ -87,7 +87,7 @@ export class LiveManager {
       });
 
       await this.audioManager.initialize((pcmBlob) => {
-        this.activeSession?.sendRealtimeInput({ audio: pcmBlob as any });
+        this.activeSession?.sendRealtimeInput({ audio: pcmBlob });
       });
 
       this.transcriptManager.startLocalTranscription(connectConfig.selected_launguage_code, this.activeSession);

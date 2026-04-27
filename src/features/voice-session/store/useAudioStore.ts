@@ -67,7 +67,7 @@ export const useAudioStore = create<AudioStore>()(
     getMediaStream: () => {
       const state = get();
       if (state.liveManagerInstance) {
-        return (state.liveManagerInstance as any).mediaStream || null;
+        return state.liveManagerInstance.getMediaStream() || null;
       }
       return null;
     },

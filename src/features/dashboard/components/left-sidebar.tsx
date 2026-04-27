@@ -31,7 +31,6 @@ import {
   VOICES_BY_TYPE,
   AVAILABLE_CONVERSATION_TYPES,
 } from '@/lib/constants';
-import SidebarHeaderComponent from '@/components/shared/sidebar-header';
 import { useAudioStore } from '@/features/voice-session/store/useAudioStore';
 import { ConnectionState } from '@/types';
 import { updateUserPreferences } from '@/server/actions/preferences';
@@ -160,7 +159,7 @@ function LeftSidebar() {
                   </SelectContent>
                 </Select>
                 <p className="text-[10px] text-muted-foreground mt-3 leading-relaxed">
-                  Select the AI's core behavior for this session.
+                  Select the AI&apos;s core behavior for this session.
                 </p>
               </SidebarGroupContent>
             </SidebarGroup>

@@ -1,6 +1,6 @@
 'use client';
 import { LucideLanguages, Mic } from 'lucide-react';
-import { memo } from 'react';
+import { memo, useEffect, useState } from 'react';
 import {
   Conversation,
   ConversationContent,
@@ -15,7 +15,6 @@ import {
 
 import { cleanText } from '@/lib/utils';
 import { useAudioStore } from '@/features/voice-session/store/useAudioStore';
-import { cn } from '@/lib/utils';
 import { ConnectionState, TranscriptItem } from '@/types';
 
 // Memoized individual message — only re-renders when its own props change
@@ -66,6 +65,12 @@ function ListeningIndicator() {
   const inputVolume = useAudioStore((state) => state.inputVolume);
   // Scale the pulsing bars based on actual mic volume
   const barScale = 0.3 + Math.min(1, inputVolume * 6) * 0.7;
+  const [now, setNow] = useState(0);
+
+  useEffect(() => {
+    const interval = setInterval(() => setNow(Date.now()), 100);
+    return () => clearInterval(interval);
+  }, []);
 
   return (
     <div className="py-1 animate-in slide-in-from-bottom-3 fade-in duration-200 ease-out">
@@ -83,7 +88,7 @@ function ListeningIndicator() {
                   key={i}
                   className="w-[3px] bg-primary/70 rounded-full transition-all duration-150"
                   style={{
-                    height: `${Math.max(4, barScale * (8 + Math.sin(Date.now() / 200 + i * 1.2) * 6))}px`,
+                    height: `${Math.max(4, barScale * (8 + Math.sin(now / 200 + i * 1.2) * 6))}px`,
                     animationDelay: `${i * 80}ms`,
                   }}
                 />

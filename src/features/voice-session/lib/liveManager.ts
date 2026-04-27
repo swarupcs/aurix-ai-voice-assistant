@@ -13,6 +13,34 @@ import {
   Session,
 } from '@google/genai';
 
+interface ISpeechRecognition {
+  continuous: boolean;
+  interimResults: boolean;
+  lang: string;
+  onresult: ((event: ISpeechRecognitionEvent) => void) | null;
+  onend: (() => void) | null;
+  onerror: ((event: ISpeechRecognitionErrorEvent) => void) | null;
+  start(): void;
+  stop(): void;
+  abort(): void;
+}
+
+interface ISpeechRecognitionEvent {
+  results: {
+    length: number;
+    [index: number]: {
+      [index: number]: {
+        transcript: string;
+      };
+      isFinal?: boolean;
+    };
+  };
+}
+
+interface ISpeechRecognitionErrorEvent {
+  error: string;
+}
+
 export class LiveManager {
   private ai: GoogleGenAI;
   private activeSession: Session | null = null;
@@ -36,7 +64,7 @@ export class LiveManager {
   private outputTranscription = '';
   private playbackGeneration = 0;
   private localTranscriptionActive = false;
-  private recognition: any = null;
+  private recognition: ISpeechRecognition | null = null;
   private isUserSpeaking = false;
   private speechSilenceTimer: ReturnType<typeof setTimeout> | null = null;
   private readonly SPEECH_THRESHOLD = 0.04;
@@ -49,7 +77,7 @@ export class LiveManager {
   
   // Continuous Offset architecture variables
   private recognitionOffset = 0;
-  private lastRecognitionResults: any = null;
+  private lastRecognitionResults: ISpeechRecognitionEvent['results'] | null = null;
 
   constructor(callbacks: LiveManagerCallbacks, token: string) {
     this.ai = new GoogleGenAI({
@@ -59,6 +87,10 @@ export class LiveManager {
     });
 
     this.callbacks = callbacks;
+  }
+
+  public getMediaStream(): MediaStream | null {
+    return this.mediaStream;
   }
 
   async startSession(connectConfig: ConnectConfig) {
@@ -305,7 +337,8 @@ CRITICAL INSTRUCTIONS:
 
     if (!this.recognition) {
       const SpeechRecognitionAPI =
-        (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+        (window as unknown as { SpeechRecognition: new () => ISpeechRecognition }).SpeechRecognition ||
+        (window as unknown as { webkitSpeechRecognition: new () => ISpeechRecognition }).webkitSpeechRecognition;
 
       if (!SpeechRecognitionAPI) {
         console.log('[LiveManager] SpeechRecognition not available — using Gemini-only transcription');
@@ -338,7 +371,7 @@ CRITICAL INSTRUCTIONS:
       return BLOCKED_PATTERNS.some(pattern => pattern.test(text));
     };
 
-    this.recognition.onresult = (event: any) => {
+    this.recognition.onresult = (event: ISpeechRecognitionEvent) => {
       // Store for offset calculations
       this.lastRecognitionResults = event.results;
 
@@ -381,7 +414,7 @@ CRITICAL INSTRUCTIONS:
       }
     };
 
-    this.recognition.onerror = (event: any) => {
+    this.recognition.onerror = (event: ISpeechRecognitionErrorEvent) => {
       // 'no-speech' fires constantly during silence — don't spam logs
       if (event.error !== 'no-speech' && event.error !== 'aborted') {
         console.log('[LiveManager] SpeechRecognition error:', event.error);
@@ -687,7 +720,7 @@ CRITICAL INSTRUCTIONS:
       try {
         this.recognition.onend = null;
         this.recognition.stop();
-      } catch (e) {}
+      } catch {}
       this.recognition = null;
     }
 
@@ -722,3 +755,4 @@ CRITICAL INSTRUCTIONS:
     this.callbacks.onStateChange(ConnectionState.DISCONNECTED);
   }
 }
+

@@ -1,7 +1,6 @@
 'use client';
 
 import { BarChart3, TrendingUp, Award, BrainCircuit, CheckCircle2 } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 export function AnalyticsView() {
   return (

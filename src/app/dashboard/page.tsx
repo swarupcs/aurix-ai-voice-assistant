@@ -1,4 +1,5 @@
 import { auth, signOut } from '@/lib/auth';
+import { type Session } from 'next-auth';
 import { LogOut, Mic } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
@@ -23,7 +24,7 @@ export default async function DashboardPage() {
   );
 }
 
-function DashboardContent({ session, preferences }: { session: any, preferences: any }) {
+function DashboardContent({ session, preferences }: { session: Session | null, preferences: Awaited<ReturnType<typeof getUserPreferences>> }) {
   return (
     <div className="h-dvh w-full flex overflow-hidden bg-background text-foreground antialiased selection:bg-primary/30 selection:text-primary relative dark:bg-zinc-950 bg-slate-50">
 

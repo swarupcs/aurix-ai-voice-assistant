@@ -323,6 +323,7 @@ export const LiveWaveform = ({
     onError,
     onStreamReady,
     onStreamEnd,
+    mediaStream,
   ])
 
   // Animation loop

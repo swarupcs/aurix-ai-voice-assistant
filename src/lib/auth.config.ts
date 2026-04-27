@@ -28,15 +28,24 @@ export default {
       return token;
     },
     // Called by middleware to determine access
-    // TODO: TEMPORARY — auth disabled for testing. Re-enable before production.
     authorized({ auth, request: { nextUrl } }) {
       const isLoggedIn = !!auth?.user;
       const isOnLogin = nextUrl.pathname === "/login";
+      const isPublicRoute = nextUrl.pathname === "/"; // Add other public routes here if needed
 
-      if (isOnLogin && isLoggedIn) {
-        return Response.redirect(new URL("/dashboard", nextUrl));
+      if (isOnLogin) {
+        if (isLoggedIn) {
+          return Response.redirect(new URL("/dashboard", nextUrl));
+        }
+        return true; // Let unauthenticated users see the login page
       }
-      return true; // Allow all routes — testing mode
+
+      // If they are not logged in and not on a public route (or login), redirect them to login
+      if (!isLoggedIn && !isPublicRoute) {
+        return Response.redirect(new URL("/login", nextUrl));
+      }
+
+      return true; // Let authenticated users or visitors to public routes through
     },
   },
 } satisfies NextAuthConfig;

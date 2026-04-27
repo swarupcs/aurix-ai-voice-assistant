@@ -3,8 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "postinstall": "prisma generate",
     "dev": "rimraf .next && next dev",
-    "build": "rimraf .next && next build",
+    "build": "prisma generate && rimraf .next && next build",
     "start": "rimraf .next && next start",
     "lint": "eslint"
   },

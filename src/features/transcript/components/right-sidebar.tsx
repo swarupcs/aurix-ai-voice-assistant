@@ -101,7 +101,7 @@ function ListeningIndicator() {
   );
 }
 
-function RightSidebar() {
+function RightSidebar({ isMobile }: { isMobile?: boolean }) {
   const items = useAudioStore((state) => state.transcript);
   const isUserSpeaking = useAudioStore((state) => state.isUserSpeaking);
   const conectionState = useAudioStore((state) => state.conectionState);
@@ -116,48 +116,56 @@ function RightSidebar() {
   );
   const showListeningIndicator = isConnected && isUserSpeaking && !hasActiveUserPartial;
 
-  return (
-    <aside className='hidden lg:flex flex-col h-full flex-none w-80 lg:w-96 md:py-4 md:pr-4 transition-all z-20'>
-      <div className="flex flex-col h-full w-full bg-background/60 backdrop-blur-3xl md:border border-border/20 md:rounded-[2rem] overflow-hidden md:shadow-2xl ring-1 ring-white/5">
-        {/* Header */}
-        <div className='border-b border-border/10 p-3 flex gap-2 bg-gradient-to-b from-background/50 to-transparent'>
-          <div className="flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-xl text-xs font-bold bg-primary text-primary-foreground shadow-lg shadow-primary/20">
-            <LucideLanguages className="w-3.5 h-3.5" />
-            Transcript
-          </div>
-        </div>
-
-        {/* Transcript Content */}
-        <div className='relative flex-1 overflow-hidden bg-background/30'>
-          <Conversation className='h-full overflow-y-auto px-5 py-6 custom-scrollbar'>
-            <ConversationContent className='space-y-5'>
-              {items.length === 0 && !showListeningIndicator ? (
-                <div className='flex h-full flex-col items-center justify-center opacity-70 pt-20 animate-in fade-in zoom-in-95 duration-700'>
-                  <div className="bg-primary/10 p-5 rounded-3xl mb-5 shadow-inner ring-1 ring-primary/20">
-                    <LucideLanguages className="w-8 h-8 text-primary" />
-                  </div>
-                  <ConversationEmptyState
-                    title=''
-                    description='Waiting for you to speak...'
-                    className='text-center text-sm font-medium tracking-wide text-muted-foreground'
-                  />
-                </div>
-              ) : (
-                <>
-                  {items.map((message) => (
-                    <TranscriptMessage
-                      key={message.id}
-                      message={message}
-                    />
-                  ))}
-                  {showListeningIndicator && <ListeningIndicator />}
-                </>
-              )}
-            </ConversationContent>
-            <ConversationScrollButton />
-          </Conversation>
+  const content = (
+    <div className={`flex flex-col h-full w-full bg-background/60 backdrop-blur-3xl overflow-hidden ring-1 ring-white/5 ${isMobile ? '' : 'md:border border-border/20 md:rounded-[2rem] md:shadow-2xl'}`}>
+      {/* Header */}
+      <div className='border-b border-border/10 p-3 flex gap-2 bg-gradient-to-b from-background/50 to-transparent'>
+        <div className="flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-xl text-xs font-bold bg-primary text-primary-foreground shadow-lg shadow-primary/20">
+          <LucideLanguages className="w-3.5 h-3.5" />
+          Transcript
         </div>
       </div>
+
+      {/* Transcript Content */}
+      <div className='relative flex-1 overflow-hidden bg-background/30'>
+        <Conversation className='h-full overflow-y-auto px-5 py-6 custom-scrollbar'>
+          <ConversationContent className='space-y-5'>
+            {items.length === 0 && !showListeningIndicator ? (
+              <div className='flex h-full flex-col items-center justify-center opacity-70 pt-20 animate-in fade-in zoom-in-95 duration-700'>
+                <div className="bg-primary/10 p-5 rounded-3xl mb-5 shadow-inner ring-1 ring-primary/20">
+                  <LucideLanguages className="w-8 h-8 text-primary" />
+                </div>
+                <ConversationEmptyState
+                  title=''
+                  description='Waiting for you to speak...'
+                  className='text-center text-sm font-medium tracking-wide text-muted-foreground'
+                />
+              </div>
+            ) : (
+              <>
+                {items.map((message) => (
+                  <TranscriptMessage
+                    key={message.id}
+                    message={message}
+                  />
+                ))}
+                {showListeningIndicator && <ListeningIndicator />}
+              </>
+            )}
+          </ConversationContent>
+          <ConversationScrollButton />
+        </Conversation>
+      </div>
+    </div>
+  );
+
+  if (isMobile) {
+    return content;
+  }
+
+  return (
+    <aside className='hidden lg:flex flex-col h-full flex-none w-80 lg:w-96 md:py-4 md:pr-4 transition-all z-20'>
+      {content}
     </aside>
   );
 }

@@ -1,7 +1,8 @@
 import { auth, signOut } from '@/lib/auth';
 import { type Session } from 'next-auth';
-import { LogOut, Mic } from 'lucide-react';
+import { LogOut, Mic, MessageSquareText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import Link from 'next/link';
 
 import RightSidebar from "@/features/transcript/components/right-sidebar";
@@ -60,7 +61,7 @@ function DashboardContent({ session, preferences }: { session: Session | null, p
               </div>
 
               {/* Right Actions */}
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2 md:gap-3">
                 {session?.user && (
                   <div className="hidden lg:flex items-center gap-2 bg-background/60 px-3 py-1.5 rounded-full border border-white/10 shadow-sm backdrop-blur-md">
                     <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
@@ -69,6 +70,22 @@ function DashboardContent({ session, preferences }: { session: Session | null, p
                     </span>
                   </div>
                 )}
+
+                {/* Mobile Transcript Trigger */}
+                <div className="lg:hidden flex items-center">
+                  <Sheet>
+                    <SheetTrigger className="inline-flex items-center justify-center rounded-full bg-background/40 backdrop-blur-md border border-white/5 hover:bg-primary/10 hover:text-primary transition-all h-9 w-9 md:h-10 md:w-10 focus:outline-none focus:ring-2 focus:ring-primary/20">
+                      <MessageSquareText className="h-4 w-4 md:h-5 md:w-5" />
+                      <span className="sr-only">Open Transcript</span>
+                    </SheetTrigger>
+                    <SheetContent side="right" className="p-0 w-[85vw] sm:w-96 border-l-0 bg-transparent shadow-none">
+                      <SheetTitle className="sr-only">Transcript</SheetTitle>
+                      <SheetDescription className="sr-only">Real-time conversation transcript</SheetDescription>
+                      <RightSidebar isMobile={true} />
+                    </SheetContent>
+                  </Sheet>
+                </div>
+
                 <form
                   action={async () => {
                     'use server';

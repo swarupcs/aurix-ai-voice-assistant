@@ -1,8 +1,9 @@
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { Mic, Users, Settings, Home, LogOut } from "lucide-react";
+import { Mic, Home, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { AdminNav } from "./admin-nav";
 
 export default async function AdminLayout({
   children,
@@ -29,20 +30,9 @@ export default async function AdminLayout({
             </span>
           </Link>
         </div>
-        <nav className="flex-1 p-4 space-y-2">
-          <Link href="/admin">
-            <Button variant="secondary" className="w-full justify-start">
-              <Users className="mr-2 h-4 w-4" />
-              Users
-            </Button>
-          </Link>
-          <Link href="/admin/settings">
-            <Button variant="ghost" className="w-full justify-start text-muted-foreground hover:text-foreground">
-              <Settings className="mr-2 h-4 w-4" />
-              Settings
-            </Button>
-          </Link>
-        </nav>
+        
+        <AdminNav />
+
         <div className="p-4 border-t">
           <Link href="/dashboard">
             <Button variant="ghost" className="w-full justify-start text-muted-foreground hover:text-foreground">

@@ -1,9 +1,10 @@
-import { getAdminStats, getRecentUsers } from "@/server/actions/admin";
+import { getAdminStats, getRecentUsers, getAllConversations } from "@/server/actions/admin";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Users, MessageSquare, Activity, Settings, TrendingUp, ShieldAlert, Cpu } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { formatDistanceToNow } from "date-fns";
 
 export const metadata = {
   title: "Admin Panel - Dashboard",
@@ -12,6 +13,8 @@ export const metadata = {
 export default async function AdminDashboardPage() {
   const stats = await getAdminStats();
   const recentUsers = await getRecentUsers(5);
+  // Get 5 most recent conversations
+  const recentConversations = (await getAllConversations()).slice(0, 5);
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -105,66 +108,47 @@ export default async function AdminDashboardPage() {
       </div>
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-7">
-        <Card className="col-span-4 border-white/10 bg-background/60 backdrop-blur-xl shadow-xl">
-          <CardHeader>
+        <Card className="col-span-4 border-white/10 bg-background/60 backdrop-blur-xl shadow-xl flex flex-col">
+          <CardHeader className="flex flex-row items-center justify-between border-b border-border/40 pb-4">
             <CardTitle className="flex items-center gap-2">
-              <Cpu className="w-5 h-5 text-primary" /> System Status
+              <MessageSquare className="w-5 h-5 text-primary" /> Recent Conversations
             </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="grid gap-4">
-              <div className="flex items-center justify-between p-4 rounded-2xl bg-card border shadow-sm">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-blue-500/10 rounded-lg">
-                    <Settings className="w-4 h-4 text-blue-500" />
-                  </div>
-                  <div>
-                    <p className="font-semibold">Platform Version</p>
-                    <p className="text-xs text-muted-foreground">Current deployment build</p>
-                  </div>
-                </div>
-                <span className="px-3 py-1 bg-secondary rounded-full text-xs font-mono font-medium">v1.2.0-beta</span>
-              </div>
-              
-              <div className="flex items-center justify-between p-4 rounded-2xl bg-card border shadow-sm">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-emerald-500/10 rounded-lg">
-                    <Activity className="w-4 h-4 text-emerald-500" />
-                  </div>
-                  <div>
-                    <p className="font-semibold">Database Connection</p>
-                    <p className="text-xs text-muted-foreground">Prisma client status</p>
-                  </div>
-                </div>
-                <span className="flex items-center gap-2 px-3 py-1 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-full text-xs font-medium">
-                  <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                  Healthy
-                </span>
-              </div>
-
-              <div className="flex items-center justify-between p-4 rounded-2xl bg-card border shadow-sm">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-purple-500/10 rounded-lg">
-                    <Activity className="w-4 h-4 text-purple-500" />
-                  </div>
-                  <div>
-                    <p className="font-semibold">AI Services</p>
-                    <p className="text-xs text-muted-foreground">Voice API endpoints</p>
-                  </div>
-                </div>
-                <span className="flex items-center gap-2 px-3 py-1 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-full text-xs font-medium">
-                  <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                  Operational
-                </span>
-              </div>
-            </div>
-            
-            <Link href="/admin/settings" className="block pt-2">
-              <Button className="w-full h-12 rounded-xl bg-primary/10 hover:bg-primary/20 text-primary border-none shadow-none font-semibold group">
-                <ShieldAlert className="mr-2 h-4 w-4 group-hover:scale-110 transition-transform" />
-                Manage Advanced Settings
-              </Button>
+            <Link href="/admin/conversations" className="text-sm font-semibold text-primary hover:text-primary/80 transition-colors">
+              View All
             </Link>
+          </CardHeader>
+          <CardContent className="flex-1 p-0">
+            <div className="divide-y divide-border/40">
+              {recentConversations.map((conv) => (
+                <div key={conv.id} className="flex items-center justify-between p-4 hover:bg-muted/30 transition-colors">
+                  <div className="flex items-center gap-4 min-w-0">
+                    <Avatar className="h-10 w-10 border shadow-sm">
+                      <AvatarImage src={conv.user?.image || ""} alt={conv.user?.name || "User"} />
+                      <AvatarFallback className="bg-primary/10 text-primary font-bold">{conv.user?.name?.charAt(0) || conv.user?.email?.charAt(0) || "?"}</AvatarFallback>
+                    </Avatar>
+                    <div className="space-y-0.5 min-w-0">
+                      <p className="text-sm font-semibold leading-none truncate">{conv.title || "Untitled Session"}</p>
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <span className="truncate">{conv.user?.name || "Unknown User"}</span>
+                        <span>•</span>
+                        <span>{formatDistanceToNow(new Date(conv.createdAt), { addSuffix: true })}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <Link href={`/admin/conversations/${conv.id}`} className="shrink-0 ml-4">
+                    <Button variant="secondary" size="sm" className="h-8 rounded-lg">
+                      View Messages
+                    </Button>
+                  </Link>
+                </div>
+              ))}
+              {recentConversations.length === 0 && (
+                <div className="flex flex-col items-center justify-center h-full p-8 text-center text-muted-foreground">
+                  <MessageSquare className="w-8 h-8 mb-2 opacity-20" />
+                  <p className="text-sm">No recent conversations found.</p>
+                </div>
+              )}
+            </div>
           </CardContent>
         </Card>
 

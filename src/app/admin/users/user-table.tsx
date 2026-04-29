@@ -18,6 +18,7 @@ import { updateUserRole, deleteUser } from "@/server/actions/admin";
 import { Role } from "@prisma/client";
 import { toast } from "sonner";
 import { MoreHorizontal, Trash2, Shield, User as UserIcon, Search, ShieldAlert } from "lucide-react";
+import Link from "next/link";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -177,6 +178,11 @@ export function UserTable({ users }: { users: any[] }) {
                           onClick={() => navigator.clipboard.writeText(user.id)}
                         >
                           Copy User ID
+                        </DropdownMenuItem>
+                        <DropdownMenuItem asChild>
+                          <Link href={`/admin/conversations?userId=${user.id}`} className="cursor-pointer rounded-lg mt-1 w-full">
+                            View Conversations
+                          </Link>
                         </DropdownMenuItem>
                         <DropdownMenuSeparator className="bg-white/10" />
                         <DropdownMenuItem 

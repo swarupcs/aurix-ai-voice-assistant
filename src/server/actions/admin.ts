@@ -115,10 +115,11 @@ export async function deleteUser(userId: string) {
   }
 }
 
-export async function getAllConversations() {
+export async function getAllConversations(userId?: string) {
   await checkAdmin();
   try {
     return await prisma.conversation.findMany({
+      where: userId ? { userId } : undefined,
       orderBy: { createdAt: "desc" },
       include: {
         user: {

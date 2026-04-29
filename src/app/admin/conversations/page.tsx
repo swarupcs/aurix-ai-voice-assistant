@@ -7,15 +7,19 @@ export const metadata = {
   title: "Admin Panel - Conversations",
 };
 
-export default async function AdminConversationsPage() {
-  const conversations = await getAllConversations();
+export default async function AdminConversationsPage(
+  props: { searchParams: Promise<{ userId?: string }> }
+) {
+  const resolvedSearchParams = await props.searchParams;
+  const userId = resolvedSearchParams?.userId;
+  const conversations = await getAllConversations(userId);
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div>
         <h2 className="text-3xl font-bold tracking-tight">Conversation History</h2>
         <p className="text-muted-foreground mt-2">
-          Review all voice sessions, transcripts, and interactions between users and the AI.
+          {userId ? "Review voice sessions for the selected user." : "Review all voice sessions, transcripts, and interactions between users and the AI."}
         </p>
       </div>
 
@@ -26,9 +30,9 @@ export default async function AdminConversationsPage() {
                <MessageSquare className="w-5 h-5 text-blue-500" />
              </div>
              <div>
-                <CardTitle className="text-xl">Global Transcript Directory</CardTitle>
+                <CardTitle className="text-xl">{userId ? "User Transcript Directory" : "Global Transcript Directory"}</CardTitle>
                 <CardDescription className="mt-1">
-                  {conversations.length} total sessions recorded across the platform.
+                  {conversations.length} total sessions recorded{userId ? " for this user" : " across the platform"}.
                 </CardDescription>
              </div>
           </div>

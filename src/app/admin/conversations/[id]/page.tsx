@@ -11,12 +11,11 @@ export const metadata = {
   title: "Admin Panel - Transcript",
 };
 
-export default async function AdminConversationDetailsPage({
-  params,
-}: {
-  params: { id: string };
-}) {
-  const { id } = await params;
+export default async function AdminConversationDetailsPage(
+  props: { params: Promise<{ id: string }> }
+) {
+  const params = await props.params;
+  const { id } = params;
   const conversation = await getAdminConversationById(id);
 
   if (!conversation) {

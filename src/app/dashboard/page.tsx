@@ -1,7 +1,6 @@
-import { auth, signOut } from '@/lib/auth';
+import { auth } from '@/lib/auth';
 import { type Session } from 'next-auth';
-import { LogOut, Mic, MessageSquareText } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Mic, MessageSquareText } from 'lucide-react';
 import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import Link from 'next/link';
 
@@ -13,6 +12,7 @@ import StoreInitializer from '@/features/voice-session/components/store-initiali
 import { SidebarProvider, SidebarInset, SidebarTrigger } from '@/components/ui/sidebar';
 import { DashboardTabs } from '@/features/dashboard/components/dashboard-tabs';
 import { DashboardClient } from '@/features/dashboard/components/dashboard-client';
+import { UserMenu } from '@/components/shared/user-menu';
 
 export default async function DashboardPage() {
   const session = await auth();
@@ -62,22 +62,6 @@ function DashboardContent({ session, preferences }: { session: Session | null, p
 
               {/* Right Actions */}
               <div className="flex items-center gap-2 md:gap-3">
-                {session?.user && session.user.role === "ADMIN" && (
-                  <Link href="/admin">
-                    <Button variant="outline" size="sm" className="hidden lg:flex gap-2 rounded-full border-white/10 bg-background/40 backdrop-blur-md shadow-sm hover:bg-primary/10 hover:text-primary transition-all h-9">
-                      <span className="text-xs font-semibold">Admin Panel</span>
-                    </Button>
-                  </Link>
-                )}
-                {session?.user && (
-                  <div className="hidden lg:flex items-center gap-2 bg-background/60 px-3 py-1.5 rounded-full border border-white/10 shadow-sm backdrop-blur-md">
-                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                    <span className="text-xs font-semibold text-muted-foreground">
-                      {session.user.email}
-                    </span>
-                  </div>
-                )}
-
                 {/* Mobile Transcript Trigger */}
                 <div className="lg:hidden flex items-center">
                   <Sheet>
@@ -93,17 +77,9 @@ function DashboardContent({ session, preferences }: { session: Session | null, p
                   </Sheet>
                 </div>
 
-                <form
-                  action={async () => {
-                    'use server';
-                    await signOut({ redirectTo: '/' });
-                  }}
-                >
-                  <Button variant="ghost" size="icon" title="Sign Out" className="rounded-full bg-background/40 backdrop-blur-md border border-white/5 hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30 transition-all h-9 w-9">
-                    <LogOut className="h-4 w-4" />
-                    <span className="sr-only">Sign out</span>
-                  </Button>
-                </form>
+                {session?.user && (
+                  <UserMenu user={session.user} />
+                )}
               </div>
             </header>
 

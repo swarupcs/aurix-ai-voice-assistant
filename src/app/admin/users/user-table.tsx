@@ -17,7 +17,7 @@ import { Input } from "@/components/ui/input";
 import { updateUserRole, deleteUser } from "@/server/actions/admin";
 import { Role } from "@prisma/client";
 import { toast } from "sonner";
-import { MoreHorizontal, Trash2, Shield, User as UserIcon, Search } from "lucide-react";
+import { MoreHorizontal, Trash2, Shield, User as UserIcon, Search, ShieldAlert } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -73,47 +73,47 @@ export function UserTable({ users }: { users: any[] }) {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div className="relative w-72">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="relative w-full sm:w-80">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             type="search"
-            placeholder="Search users..."
-            className="pl-9 bg-background"
+            placeholder="Search users by name or email..."
+            className="pl-10 h-10 bg-background/50 border-white/10 rounded-xl focus-visible:ring-primary/20"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
         </div>
-        <div className="text-sm text-muted-foreground">
-          Showing {filteredUsers.length} {filteredUsers.length === 1 ? 'user' : 'users'}
+        <div className="text-sm font-medium text-muted-foreground bg-muted/50 px-3 py-1.5 rounded-lg border border-border/50">
+          Showing <span className="text-foreground">{filteredUsers.length}</span> {filteredUsers.length === 1 ? 'user' : 'users'}
         </div>
       </div>
 
-      <div className="rounded-xl border bg-card text-card-foreground shadow overflow-hidden">
+      <div className="rounded-2xl border border-white/10 bg-card/50 shadow-sm overflow-hidden backdrop-blur-sm">
         <div className="overflow-x-auto">
           <Table>
-            <TableHeader className="bg-muted/50">
-              <TableRow>
-                <TableHead>User</TableHead>
-                <TableHead>Role</TableHead>
-                <TableHead>Conversations</TableHead>
-                <TableHead>Language</TableHead>
-                <TableHead>Voice</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+            <TableHeader className="bg-muted/30">
+              <TableRow className="border-white/10">
+                <TableHead className="h-12 text-xs font-bold uppercase tracking-wider text-muted-foreground">User</TableHead>
+                <TableHead className="h-12 text-xs font-bold uppercase tracking-wider text-muted-foreground">Role</TableHead>
+                <TableHead className="h-12 text-xs font-bold uppercase tracking-wider text-muted-foreground">Activity</TableHead>
+                <TableHead className="h-12 text-xs font-bold uppercase tracking-wider text-muted-foreground">Language</TableHead>
+                <TableHead className="h-12 text-xs font-bold uppercase tracking-wider text-muted-foreground">Voice</TableHead>
+                <TableHead className="h-12 text-xs font-bold uppercase tracking-wider text-muted-foreground text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filteredUsers.map((user) => (
-                <TableRow key={user.id} className="hover:bg-muted/50 transition-colors">
+                <TableRow key={user.id} className="hover:bg-muted/50 transition-colors border-white/10">
                   <TableCell>
-                    <div className="flex items-center gap-3">
-                      <Avatar className="h-9 w-9 border shadow-sm">
+                    <div className="flex items-center gap-4 py-2">
+                      <Avatar className="h-10 w-10 border-2 border-background shadow-sm">
                         <AvatarImage src={user.image || ""} alt={user.name || ""} />
-                        <AvatarFallback>{user.name?.charAt(0) || user.email?.charAt(0) || "?"}</AvatarFallback>
+                        <AvatarFallback className="bg-primary/10 text-primary font-bold">{user.name?.charAt(0) || user.email?.charAt(0) || "?"}</AvatarFallback>
                       </Avatar>
-                      <div className="flex flex-col">
-                        <span className="font-medium">{user.name || "Unknown User"}</span>
-                        <span className="text-xs text-muted-foreground">{user.email}</span>
+                      <div className="flex flex-col min-w-0">
+                        <span className="font-semibold truncate">{user.name || "Unknown User"}</span>
+                        <span className="text-xs text-muted-foreground truncate">{user.email}</span>
                       </div>
                     </div>
                   </TableCell>
@@ -123,67 +123,68 @@ export function UserTable({ users }: { users: any[] }) {
                       value={user.role}
                       onValueChange={(value) => handleRoleChange(user.id, value as Role)}
                     >
-                      <SelectTrigger className="w-[120px] h-8 bg-background">
+                      <SelectTrigger className={`w-[130px] h-9 bg-background/50 border-white/10 rounded-lg ${user.role === 'ADMIN' ? 'text-primary ring-1 ring-primary/20' : ''}`}>
                         <SelectValue placeholder="Role" />
                       </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="USER">
+                      <SelectContent className="rounded-xl border-white/10 shadow-xl backdrop-blur-xl bg-background/95">
+                        <SelectItem value="USER" className="py-2 cursor-pointer">
                           <div className="flex items-center gap-2">
-                            <UserIcon className="h-3.5 w-3.5" />
-                            <span>User</span>
+                            <UserIcon className="h-4 w-4 text-muted-foreground" />
+                            <span className="font-medium">User</span>
                           </div>
                         </SelectItem>
-                        <SelectItem value="ADMIN">
+                        <SelectItem value="ADMIN" className="py-2 cursor-pointer">
                           <div className="flex items-center gap-2">
-                            <Shield className="h-3.5 w-3.5" />
-                            <span>Admin</span>
+                            <ShieldAlert className="h-4 w-4 text-primary" />
+                            <span className="font-medium text-primary">Admin</span>
                           </div>
                         </SelectItem>
                       </SelectContent>
                     </Select>
                   </TableCell>
                   <TableCell>
-                    <Badge variant="secondary" className="font-mono">{user._count?.conversations || 0}</Badge>
+                    <Badge variant="secondary" className="font-mono bg-secondary/50 border-white/5">{user._count?.conversations || 0} chats</Badge>
                   </TableCell>
                   <TableCell>
                     {user.preferences ? (
                       <div className="flex flex-col">
                         <span className="text-sm font-medium">{user.preferences.languageName}</span>
-                        <span className="text-xs text-muted-foreground">{user.preferences.languageRegion}</span>
+                        <span className="text-xs text-muted-foreground opacity-80">{user.preferences.languageRegion}</span>
                       </div>
                     ) : (
-                      <span className="text-muted-foreground text-sm italic">Not set</span>
+                      <span className="text-muted-foreground text-xs italic bg-muted px-2 py-1 rounded-md">Not configured</span>
                     )}
                   </TableCell>
                   <TableCell>
                     {user.preferences?.voice ? (
-                      <Badge variant="outline" className="bg-background">{user.preferences.voice}</Badge>
+                      <Badge variant="outline" className="bg-background/50 border-white/10">{user.preferences.voice}</Badge>
                     ) : (
-                      <span className="text-muted-foreground text-sm italic">-</span>
+                      <span className="text-muted-foreground font-bold">-</span>
                     )}
                   </TableCell>
                   <TableCell className="text-right">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" className="h-8 w-8 p-0">
+                        <Button variant="ghost" className="h-9 w-9 p-0 rounded-lg hover:bg-muted">
                           <span className="sr-only">Open menu</span>
                           <MoreHorizontal className="h-4 w-4" />
                         </Button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="w-[160px]">
-                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                      <DropdownMenuContent align="end" className="w-48 rounded-xl border-white/10 shadow-xl backdrop-blur-xl bg-background/95 p-2">
+                        <DropdownMenuLabel className="text-xs uppercase tracking-wider text-muted-foreground font-bold">Actions</DropdownMenuLabel>
                         <DropdownMenuItem
+                          className="cursor-pointer rounded-lg mt-1"
                           onClick={() => navigator.clipboard.writeText(user.id)}
                         >
                           Copy User ID
                         </DropdownMenuItem>
-                        <DropdownMenuSeparator />
+                        <DropdownMenuSeparator className="bg-white/10" />
                         <DropdownMenuItem 
-                          className="text-destructive focus:text-destructive focus:bg-destructive/10"
+                          className="text-destructive focus:text-destructive focus:bg-destructive/10 cursor-pointer rounded-lg"
                           onClick={() => setUserToDelete(user.id)}
                         >
                           <Trash2 className="mr-2 h-4 w-4" />
-                          Delete User
+                          <span className="font-medium">Delete Account</span>
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
@@ -192,10 +193,12 @@ export function UserTable({ users }: { users: any[] }) {
               ))}
               {filteredUsers.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={6} className="h-32 text-center text-muted-foreground">
-                    <div className="flex flex-col items-center justify-center space-y-2">
-                      <Search className="h-8 w-8 text-muted-foreground/50" />
-                      <span>No users found.</span>
+                  <TableCell colSpan={6} className="h-48 text-center text-muted-foreground">
+                    <div className="flex flex-col items-center justify-center space-y-3">
+                      <div className="p-4 rounded-full bg-muted/50">
+                         <Search className="h-6 w-6 text-muted-foreground/50" />
+                      </div>
+                      <p className="font-medium">No users found matching your search.</p>
                     </div>
                   </TableCell>
                 </TableRow>
@@ -205,21 +208,23 @@ export function UserTable({ users }: { users: any[] }) {
         </div>
 
         <AlertDialog open={!!userToDelete} onOpenChange={(open) => !open && setUserToDelete(null)}>
-          <AlertDialogContent>
+          <AlertDialogContent className="rounded-2xl border-white/10 bg-background/95 backdrop-blur-xl shadow-2xl">
             <AlertDialogHeader>
-              <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-              <AlertDialogDescription>
-                This action cannot be undone. This will permanently delete the user
-                account and remove their data (preferences, conversations, messages) from our servers.
+              <div className="w-12 h-12 rounded-full bg-destructive/10 flex items-center justify-center mb-4">
+                 <Trash2 className="h-6 w-6 text-destructive" />
+              </div>
+              <AlertDialogTitle className="text-xl">Delete User Account</AlertDialogTitle>
+              <AlertDialogDescription className="text-base">
+                This action is permanent and irreversible. All associated data, including preferences and conversation history, will be destroyed.
               </AlertDialogDescription>
             </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogFooter className="mt-6 gap-3">
+              <AlertDialogCancel className="rounded-xl h-11 border-white/10 bg-background/50 hover:bg-background">Cancel</AlertDialogCancel>
               <AlertDialogAction 
                 onClick={handleDeleteUser}
-                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                className="rounded-xl h-11 bg-destructive text-destructive-foreground hover:bg-destructive/90 shadow-lg shadow-destructive/20"
               >
-                {loading === userToDelete ? "Deleting..." : "Delete Account"}
+                {loading === userToDelete ? "Deleting..." : "Confirm Deletion"}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>

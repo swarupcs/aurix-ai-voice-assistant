@@ -126,10 +126,7 @@ export class LiveManager {
   private generateSystemPrompt(config: ConnectConfig) {
     let basePrompt = `ROLE: You are an expert AI Voice Assistant. Your name is "Aurix".\n\n`;
 
-    const langInstruction =
-      config.selected_conversation_type === 'Language Practice'
-        ? `The user will be speaking to you in ${config.selected_launguage_name}. You must transcribe their audio as ${config.selected_launguage_name} and respond in ${config.selected_launguage_name}.`
-        : `The user will be speaking to you in English. Please transcribe their audio as English and respond in English.`;
+    const langInstruction = `The user will be speaking to you in ${config.selected_launguage_name}. You must transcribe their audio as ${config.selected_launguage_name} and respond in ${config.selected_launguage_name}.`;
 
     basePrompt += `SPOKEN LANGUAGE INSTRUCTION: ${langInstruction}\n\n`;
 

@@ -53,7 +53,7 @@ export function UserMenu({ user }: UserMenuProps) {
         <DropdownMenuSeparator className="bg-border/40 mb-2" />
         <DropdownMenuGroup>
           <DropdownMenuItem className="p-3 rounded-xl cursor-pointer hover:bg-primary/10 hover:text-primary focus:bg-primary/10 focus:text-primary transition-colors" asChild>
-            <Link href="/dashboard" className="flex items-center w-full">
+            <Link href="/profile" className="flex items-center w-full">
               <User className="mr-3 h-4 w-4" />
               <span>Profile Details</span>
             </Link>

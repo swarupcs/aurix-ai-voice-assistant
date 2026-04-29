@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Users, Settings, LayoutDashboard } from "lucide-react";
+import { Users, Settings, LayoutDashboard, MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export function AdminNav() {
@@ -26,6 +26,15 @@ export function AdminNav() {
         >
           <Users className="mr-2 h-4 w-4" />
           Users
+        </Button>
+      </Link>
+      <Link href="/admin/conversations">
+        <Button 
+          variant={pathname.startsWith("/admin/conversations") ? "secondary" : "ghost"} 
+          className={`w-full justify-start ${!pathname.startsWith("/admin/conversations") ? "text-muted-foreground hover:text-foreground" : ""}`}
+        >
+          <MessageSquare className="mr-2 h-4 w-4" />
+          Conversations
         </Button>
       </Link>
       <Link href="/admin/settings">

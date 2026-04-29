@@ -77,7 +77,7 @@ export async function getUsers() {
           select: { conversations: true },
         },
       },
-      orderBy: { id: "asc" },
+      orderBy: { id: "desc" },
     });
     return users;
   } catch (error) {
@@ -112,6 +112,46 @@ export async function deleteUser(userId: string) {
   } catch (error) {
     console.error("Failed to delete user:", error);
     return { success: false, error: "Failed to delete user." };
+  }
+}
+
+export async function getAllConversations() {
+  await checkAdmin();
+  try {
+    return await prisma.conversation.findMany({
+      orderBy: { createdAt: "desc" },
+      include: {
+        user: {
+          select: { name: true, email: true, image: true }
+        },
+        _count: {
+          select: { messages: true }
+        }
+      }
+    });
+  } catch (error) {
+    console.error("Failed to fetch conversations:", error);
+    throw new Error("Failed to fetch conversations.");
+  }
+}
+
+export async function getAdminConversationById(conversationId: string) {
+  await checkAdmin();
+  try {
+    return await prisma.conversation.findUnique({
+      where: { id: conversationId },
+      include: {
+        user: {
+          select: { name: true, email: true, image: true, role: true }
+        },
+        messages: {
+          orderBy: { createdAt: "asc" }
+        }
+      }
+    });
+  } catch (error) {
+    console.error("Failed to fetch conversation details:", error);
+    throw new Error("Failed to fetch conversation details.");
   }
 }
 

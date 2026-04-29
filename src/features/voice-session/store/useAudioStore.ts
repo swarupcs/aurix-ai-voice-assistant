@@ -225,7 +225,14 @@ export const useAudioStore = create<AudioStore>()(
           }));
           
           try {
-            await saveConversation(state.selectedTopic || "Conversation", messagesToSave);
+            const selectedLang = AVAILABLE_LANGUAGES.find(
+              (l) => l.code === state.selectedLanguage,
+            );
+            await saveConversation(
+              state.selectedTopic || "Conversation", 
+              selectedLang?.name || "English", 
+              messagesToSave
+            );
           } catch (e) {
             console.error("Failed to save conversation:", e);
           }

@@ -84,6 +84,7 @@ model Conversation {
   id        String   @id @default(cuid())
   userId    String
   title     String?  // Auto-generated from topic or first message
+  language  String?  // The language spoken (e.g. Hindi)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

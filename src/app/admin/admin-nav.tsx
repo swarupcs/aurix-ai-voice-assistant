@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Users, Settings } from "lucide-react";
+import { Users, Settings, LayoutDashboard } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export function AdminNav() {
@@ -14,6 +14,15 @@ export function AdminNav() {
         <Button 
           variant={pathname === "/admin" ? "secondary" : "ghost"} 
           className={`w-full justify-start ${pathname !== "/admin" ? "text-muted-foreground hover:text-foreground" : ""}`}
+        >
+          <LayoutDashboard className="mr-2 h-4 w-4" />
+          Dashboard
+        </Button>
+      </Link>
+      <Link href="/admin/users">
+        <Button 
+          variant={pathname === "/admin/users" ? "secondary" : "ghost"} 
+          className={`w-full justify-start ${pathname !== "/admin/users" ? "text-muted-foreground hover:text-foreground" : ""}`}
         >
           <Users className="mr-2 h-4 w-4" />
           Users
@@ -31,3 +40,4 @@ export function AdminNav() {
     </nav>
   );
 }
+

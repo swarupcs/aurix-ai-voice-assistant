@@ -12,6 +12,61 @@ export async function checkAdmin() {
   }
 }
 
+export async function getAdminStats() {
+  await checkAdmin();
+  try {
+    const [totalUsers, totalConversations, totalMessages] = await Promise.all([
+      prisma.user.count(),
+      prisma.conversation.count(),
+      prisma.message.count(),
+    ]);
+
+    // Calculate active users (users who had a conversation in the last 7 days)
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    
+    const activeUsers = await prisma.user.count({
+      where: {
+        conversations: {
+          some: {
+            updatedAt: {
+              gte: sevenDaysAgo
+            }
+          }
+        }
+      }
+    });
+
+    return {
+      totalUsers,
+      totalConversations,
+      totalMessages,
+      activeUsers
+    };
+  } catch (error) {
+    console.error("Failed to fetch admin stats:", error);
+    throw new Error("Failed to fetch admin stats.");
+  }
+}
+
+export async function getRecentUsers(limit = 5) {
+  await checkAdmin();
+  try {
+    return await prisma.user.findMany({
+      take: limit,
+      orderBy: { id: "desc" },
+      include: {
+        _count: {
+          select: { conversations: true }
+        }
+      }
+    });
+  } catch (error) {
+    console.error("Failed to fetch recent users:", error);
+    throw new Error("Failed to fetch recent users.");
+  }
+}
+
 export async function getUsers() {
   await checkAdmin();
   try {
@@ -38,7 +93,7 @@ export async function updateUserRole(userId: string, newRole: Role) {
       where: { id: userId },
       data: { role: newRole },
     });
-    revalidatePath("/admin");
+    revalidatePath("/admin/users");
     return { success: true };
   } catch (error) {
     console.error("Failed to update user role:", error);
@@ -52,10 +107,11 @@ export async function deleteUser(userId: string) {
     await prisma.user.delete({
       where: { id: userId },
     });
-    revalidatePath("/admin");
+    revalidatePath("/admin/users");
     return { success: true };
   } catch (error) {
     console.error("Failed to delete user:", error);
     return { success: false, error: "Failed to delete user." };
   }
 }
+

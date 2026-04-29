@@ -62,6 +62,13 @@ function DashboardContent({ session, preferences }: { session: Session | null, p
 
               {/* Right Actions */}
               <div className="flex items-center gap-2 md:gap-3">
+                {session?.user && session.user.role === "ADMIN" && (
+                  <Link href="/admin">
+                    <Button variant="outline" size="sm" className="hidden lg:flex gap-2 rounded-full border-white/10 bg-background/40 backdrop-blur-md shadow-sm hover:bg-primary/10 hover:text-primary transition-all h-9">
+                      <span className="text-xs font-semibold">Admin Panel</span>
+                    </Button>
+                  </Link>
+                )}
                 {session?.user && (
                   <div className="hidden lg:flex items-center gap-2 bg-background/60 px-3 py-1.5 rounded-full border border-white/10 shadow-sm backdrop-blur-md">
                     <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />

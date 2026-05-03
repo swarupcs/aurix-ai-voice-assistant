@@ -22,6 +22,7 @@ import {
 } from '@/components/ui/select';
 
 import { ModeToggle } from '@/components/shared/mode-toggle';
+import { FeedbackDialog } from '@/components/shared/feedback-dialog';
 
 import {
   AVAILABLE_LANGUAGES,
@@ -295,7 +296,8 @@ function LeftSidebar() {
         </SidebarContent>
 
         <SidebarFooter className="border-t border-border/10 p-5 bg-background/30 backdrop-blur-md">
-          <div className="flex items-center justify-between bg-black/5 dark:bg-white/5 p-2 rounded-2xl border border-white/10 shadow-inner">  
+          <FeedbackDialog />
+          <div className="flex items-center justify-between bg-black/5 dark:bg-white/5 p-2 rounded-2xl border border-white/10 shadow-inner mt-2">  
             <div className="flex items-center gap-2 text-[11px] font-bold text-muted-foreground uppercase tracking-widest ml-3">
               <Palette className="h-4 w-4" />
               <span>Appearance</span>

@@ -71,10 +71,10 @@ export default async function AdminConversationDetailsPage(
            </div>
            <div className="relative z-10 h-full flex flex-col justify-between">
              <div>
-                <p className="text-[10px] font-bold uppercase tracking-widest text-primary/80 mb-2 flex items-center gap-2">
+                <div className="text-[10px] font-bold uppercase tracking-widest text-primary/80 mb-2 flex items-center gap-2">
                    <div className="p-1 bg-primary/10 rounded"><MessageSquare className="w-3 h-3" /></div>
                    Topic Discussed
-                </p>
+                </div>
                 <h3 className="text-2xl font-bold leading-tight">{conversation.title || "Untitled Session"}</h3>
              </div>
              

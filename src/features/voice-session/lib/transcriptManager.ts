@@ -57,6 +57,7 @@ export class TranscriptManager {
   public outputTranscription = '';
   public localInputText = '';
   public geminiInputActive = false;
+  public activeSession: Session | null = null;
 
   constructor(private callbacks: { onTranscript: (sender: 'user'|'model', text: string, isPartial: boolean) => void }) {}
 
@@ -107,7 +108,7 @@ export class TranscriptManager {
     };
 
     this.recognition.onend = () => {
-      if (this.localTranscriptionActive && activeSession) {
+      if (this.localTranscriptionActive && this.activeSession) {
         this.recognitionOffset = 0;
         this.lastRecognitionResults = null;
         try {

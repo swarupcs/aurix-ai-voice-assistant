@@ -56,7 +56,7 @@ export class AudioManager {
     this.outputNode.connect(this.outputAnalyser);
     this.outputAnalyser.connect(this.outputAudioContext.destination);
 
-    await this.inputAudioContext.audioWorklet.addModule(`/worklets/mic-processor.js?v=${Date.now()}`);
+    await this.inputAudioContext.audioWorklet.addModule('/worklets/mic-processor.js');
     this.workletNode = new AudioWorkletNode(this.inputAudioContext, 'mic-processor');
 
     this.workletNode.port.onmessage = (event) => {

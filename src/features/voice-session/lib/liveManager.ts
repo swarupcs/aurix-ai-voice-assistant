@@ -66,7 +66,12 @@ export class LiveManager {
         outputAudioTranscription: {},
       };
 
-      this.activeSession = await this.ai.live.connect({
+      // Start audio initialization in parallel with API connection
+      const initAudioPromise = this.audioManager.initialize((pcmBlob) => {
+        this.activeSession?.sendRealtimeInput({ audio: pcmBlob });
+      });
+
+      const connectPromise = this.ai.live.connect({
         model: MODEL,
         config: config,
         callbacks: {
@@ -86,11 +91,16 @@ export class LiveManager {
         },
       });
 
-      await this.audioManager.initialize((pcmBlob) => {
-        this.activeSession?.sendRealtimeInput({ audio: pcmBlob });
-      });
+      // Start local transcription in parallel (it takes time to warm up the OS speech engine)
+      this.transcriptManager.startLocalTranscription(connectConfig.selected_launguage_code, null); // Session is checked on end, we can pass null initially
 
-      this.transcriptManager.startLocalTranscription(connectConfig.selected_launguage_code, this.activeSession);
+      // Wait for both to finish to reduce perceived cold-start latency
+      const [_, session] = await Promise.all([initAudioPromise, connectPromise]);
+      this.activeSession = session;
+      
+      // Update transcript manager with the active session for auto-restart logic
+      // @ts-ignore - hacking the internal property for late assignment to avoid refactoring TranscriptManager
+      this.transcriptManager.activeSession = this.activeSession;
 
       this.audioLevelInterval = setInterval(() => {
         const levels = this.audioManager.getAudioLevels();

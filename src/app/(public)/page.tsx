@@ -1,8 +1,12 @@
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { Mic, Globe, Sparkles, Zap, Shield, Rocket } from "lucide-react";
+import { auth } from "@/lib/auth";
 
-export default function LandingPage() {
+export default async function LandingPage() {
+  const session = await auth();
+  const isLoggedIn = !!session?.user;
+
   return (
     <div className="flex min-h-screen flex-col bg-zinc-950 text-zinc-50 selection:bg-primary/20 overflow-hidden">
       {/* Abstract Background Effects */}
@@ -23,11 +27,15 @@ export default function LandingPage() {
           <Link className="hidden md:block text-sm font-medium text-zinc-400 hover:text-white transition-colors" href="#features">
             Features
           </Link>
-          <Link className="text-sm font-medium text-zinc-400 hover:text-white transition-colors" href="/login">
-            Sign In
-          </Link>
+          {!isLoggedIn && (
+            <Link className="text-sm font-medium text-zinc-400 hover:text-white transition-colors" href="/login">
+              Sign In
+            </Link>
+          )}
           <Button asChild size="lg" className="rounded-full font-semibold px-6 shadow-xl shadow-primary/10">
-            <Link href="/login">Get Started</Link>
+            <Link href={isLoggedIn ? "/dashboard" : "/login"}>
+              {isLoggedIn ? "Dashboard" : "Get Started"}
+            </Link>
           </Button>
         </nav>
       </header>
@@ -52,7 +60,9 @@ export default function LandingPage() {
             
             <div className="flex flex-col sm:flex-row gap-5 animate-in fade-in slide-in-from-bottom-8 duration-1000 delay-300">
               <Button asChild size="lg" className="rounded-full h-16 px-10 text-lg font-bold shadow-2xl shadow-primary/20 hover:scale-105 active:scale-95 transition-all">
-                <Link href="/login">Start Talking Now</Link>
+                <Link href={isLoggedIn ? "/dashboard" : "/login"}>
+                  {isLoggedIn ? "Go to Dashboard" : "Start Talking Now"}
+                </Link>
               </Button>
               <Button asChild variant="outline" size="lg" className="rounded-full h-16 px-10 text-lg font-bold bg-white/5 backdrop-blur-md border-white/10 hover:bg-white/10 hover:border-white/20 transition-all">
                 <Link href="#features">Explore Technology</Link>
@@ -120,7 +130,9 @@ export default function LandingPage() {
                        Join thousands of learners mastering languages through the power of AI voice interaction.
                     </p>
                     <Button asChild size="lg" variant="secondary" className="rounded-full h-20 px-12 text-2xl font-black shadow-2xl hover:scale-110 transition-transform">
-                       <Link href="/login">Get Started Now</Link>
+                       <Link href={isLoggedIn ? "/dashboard" : "/login"}>
+                         {isLoggedIn ? "Go to Dashboard" : "Get Started Now"}
+                       </Link>
                     </Button>
                  </div>
               </div>

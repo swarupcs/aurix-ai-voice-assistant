@@ -1,8 +1,9 @@
 import { auth } from '@/lib/auth';
 import { type Session } from 'next-auth';
-import { Mic, MessageSquareText } from 'lucide-react';
+import { MessageSquareText } from 'lucide-react';
 import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import Link from 'next/link';
+import Image from 'next/image';
 
 import RightSidebar from "@/features/transcript/components/right-sidebar";
 import LeftSidebar from "@/features/dashboard/components/left-sidebar";
@@ -53,8 +54,8 @@ function DashboardContent({ session, preferences }: { session: Session | null, p
                   <SidebarTrigger className="-ml-2 text-foreground/70 hover:text-foreground transition-colors" />
                 </div>
                 <Link className="flex items-center justify-center gap-3 group" href="/dashboard">
-                  <div className="bg-gradient-to-br from-primary to-blue-600 p-2 rounded-xl shadow-lg shadow-primary/20 group-hover:shadow-primary/40 transition-all duration-300 group-hover:scale-105">
-                    <Mic className="h-4 w-4 text-white" />
+                  <div className="bg-primary/20 p-1.5 rounded-xl shadow-lg shadow-primary/20 group-hover:shadow-primary/40 transition-all duration-300 group-hover:scale-105 overflow-hidden">
+                    <Image src="/logo.png" alt="Aurix AI Logo" width={24} height={24} className="object-contain" />
                   </div>
                   <span className="font-extrabold text-lg tracking-tight bg-gradient-to-br from-foreground to-foreground/70 bg-clip-text text-transparent group-hover:from-foreground group-hover:to-foreground transition-all">Aurix AI</span>
                 </Link>

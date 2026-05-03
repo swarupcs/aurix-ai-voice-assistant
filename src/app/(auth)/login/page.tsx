@@ -1,7 +1,8 @@
 import { Button } from "@/components/ui/button";
 import { signIn } from "@/lib/auth";
-import { Mic, Sparkles, Languages, Zap } from "lucide-react";
+import { Sparkles, Languages, Zap } from "lucide-react";
 import Link from "next/link";
+import Image from "next/image";
 
 export default function LoginPage() {
   return (
@@ -17,8 +18,8 @@ export default function LoginPage() {
 
         {/* Logo/Brand */}
         <div className="relative z-10 flex items-center gap-2">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-lg shadow-primary/25">
-            <Mic className="h-6 w-6" />
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/20 text-primary-foreground shadow-lg shadow-primary/25 overflow-hidden p-1">
+            <Image src="/logo.png" alt="Aurix AI Logo" width={40} height={40} className="object-contain" />
           </div>
           <span className="text-xl font-bold tracking-tight">Aurix AI</span>
         </div>
@@ -62,8 +63,8 @@ export default function LoginPage() {
       <div className="flex flex-1 flex-col items-center justify-center p-6 sm:p-12 relative overflow-hidden bg-muted/50">
         {/* Mobile Logo */}
         <div className="lg:hidden absolute top-8 left-8 flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-            <Mic className="h-5 w-5" />
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/20 text-primary-foreground overflow-hidden p-0.5">
+            <Image src="/logo.png" alt="Aurix AI Logo" width={32} height={32} className="object-contain" />
           </div>
           <span className="text-lg font-bold tracking-tight">Aurix AI</span>
         </div>

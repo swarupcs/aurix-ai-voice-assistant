@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { Mic, Globe, Sparkles, Zap, Shield, Rocket } from "lucide-react";
+import Image from "next/image";
+import { Globe, Sparkles, Zap, Shield, Rocket } from "lucide-react";
 import { auth } from "@/lib/auth";
 
 export default async function LandingPage() {
@@ -18,8 +19,8 @@ export default async function LandingPage() {
 
       <header className="px-6 h-20 flex items-center border-b border-white/5 bg-zinc-950/60 backdrop-blur-xl sticky top-0 z-50">
         <Link className="flex items-center justify-center gap-2 group" href="/">
-          <div className="bg-primary flex h-10 w-10 items-center justify-center rounded-xl shadow-lg shadow-primary/20 group-hover:scale-105 transition-transform duration-300">
-            <Mic className="h-6 w-6 text-primary-foreground" />
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl overflow-hidden shadow-lg shadow-primary/20 group-hover:scale-105 transition-transform duration-300">
+            <Image src="/logo.png" alt="Aurix AI Logo" width={40} height={40} className="object-cover" />
           </div>
           <span className="font-bold text-xl tracking-tighter">Aurix AI</span>
         </Link>
@@ -144,8 +145,8 @@ export default async function LandingPage() {
         <div className="container mx-auto flex flex-col md:flex-row justify-between items-center gap-8">
           <div className="flex flex-col items-center md:items-start gap-4">
              <div className="flex items-center gap-2">
-                <div className="bg-primary/20 p-2 rounded-lg">
-                  <Mic className="h-5 w-5 text-primary" />
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg overflow-hidden bg-primary/20 p-1">
+                  <Image src="/logo.png" alt="Aurix AI Logo" width={32} height={32} className="object-contain" />
                 </div>
                 <span className="font-bold text-lg tracking-tight">Aurix AI</span>
              </div>

@@ -1,7 +1,8 @@
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { Mic, Home, LogOut } from "lucide-react";
+import Image from "next/image";
+import { Home, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AdminNav } from "./admin-nav";
 import { ModeToggle } from "@/components/shared/mode-toggle";
@@ -30,8 +31,8 @@ export default async function AdminLayout({
       <aside className="w-72 border-r border-border/40 bg-background/50 backdrop-blur-2xl flex flex-col relative z-10 shadow-xl">
         <div className="h-20 flex items-center px-6 border-b border-border/40 bg-gradient-to-b from-background/80 to-transparent">
           <Link className="flex items-center gap-3 group" href="/dashboard">
-            <div className="bg-gradient-to-br from-primary to-blue-600 p-2.5 rounded-xl shadow-lg shadow-primary/20 group-hover:shadow-primary/40 group-hover:scale-105 transition-all duration-300">
-              <Mic className="h-5 w-5 text-white" />
+            <div className="bg-primary/20 p-1.5 rounded-xl shadow-lg shadow-primary/20 group-hover:shadow-primary/40 group-hover:scale-105 transition-all duration-300 overflow-hidden">
+              <Image src="/logo.png" alt="Aurix AI Logo" width={28} height={28} className="object-contain" />
             </div>
             <div className="flex flex-col">
               <span className="font-extrabold text-lg tracking-tight bg-gradient-to-br from-foreground to-foreground/70 bg-clip-text text-transparent group-hover:from-foreground group-hover:to-foreground transition-all">
